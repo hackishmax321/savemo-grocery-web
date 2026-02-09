@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { AiFillCloseSquare, AiOutlineMenu, AiOutlineSearch, AiOutlineSetting, AiOutlineShoppingCart, AiOutlineUser, AiOutlineDelete, AiOutlinePlus, AiOutlineMinus } from 'react-icons/ai'
+import { AiFillCloseSquare, AiOutlineMenu, AiOutlineSearch, AiOutlineSetting, AiOutlineShoppingCart, AiOutlineUser, AiOutlineDelete, AiOutlinePlus, AiOutlineMinus, AiOutlineLogin } from 'react-icons/ai'
 import { Link } from 'react-router-dom'
 import { useMediaQuery } from 'react-responsive'
 import { useCart } from '../../providers/CartProvide' 
+import SearchBar from './SearchBar'
 
 function Nav() {
-  const [logged, setLogged] = useState(false)
+  const [logged, setLogged] = useState(true)
   const [isOpen, setIsOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const isMobile = useMediaQuery({maxWidth: 853})
@@ -16,6 +17,12 @@ function Nav() {
 
   const handleLogout = () => {
     setLogged(false)
+    setIsOpen(false)
+    // Add your logout logic here
+  }
+
+  const handleLogin = () => {
+    setLogged(true)
     setIsOpen(false)
     // Add your logout logic here
   }
@@ -54,65 +61,42 @@ function Nav() {
     <nav className='fixed top-0 left-0 w-full min-h-13 shadow-md z-50 bg-secondary '>
       <div className='container mx-auto px-1.5 py-2 inset-0 flex justify-between items-center'>
         <div className='text-xl font-bold '>
-          <Link to={'/'}>ECOMhub</Link>
+          <Link to={'/'}>
+            <img src='/logo/logo-main.png' className='h-15'/>
+          </Link>
         </div>
         {/* Search bar */}
-        <div className='flex-1 mx-6 m-y-3 max-w-2xl md:max-w-xl'>
-          <div className='relative'>
-            <input 
-            type='text' 
-            placeholder='Search Products Here'
-            className='w-full px-4 py-2 pl-10 bg-primary text-font-secondary border rounded-lg border-gray-300 focus:outline-none 
-            focus: ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400'
-            /> 
-            <AiOutlineSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg z-59' />
-            <button className='absolute right-0 top-1/2 transform -translate-y-1/2 bg-secondary text-font-primary text-lg
-             z-59 h-full w-14 px-auto rounded-r-lg flex justify-center items-center hover:bg-secondary/90 transition-opacity'>
-              <AiOutlineSearch className='text-2xl' />
-            </button>
-          </div>
-        </div>
+        <SearchBar />
         {isMobileNav && isMobile && (
         <div className="absolute top-full left-0 w-full bg-secondary/70 dark:bg-gray-900 shadow-lg border-t border-gray-200 dark:border-gray-700 transition-all duration-300 ease-out animate-fadeInDown">
           <div className="container mx-auto px-4 py-6">
             <ul className="flex flex-col gap-4">
               <li>
                 <Link 
-                  to="/items" 
+                  to="/products" 
                   className="flex items-center px-4 py-3 text-font-primary-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all duration-200 group"
                   onClick={() => setIsMobileNav(false)}
                 >
                   <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
-                  Products
+                  STORE
                   <span className="ml-auto text-xs text-blue-600 dark:text-blue-400 font-semibold bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">New</span>
                 </Link>
               </li>
               <li>
                 <Link 
-                  to="/contact" 
+                  to="/categories" 
                   className="flex items-center px-4 py-3 text-font-primary-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all duration-200 group"
                   onClick={() => setIsMobileNav(false)}
                 >
                   <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  Contact Us
+                  CATEGORIES
                 </Link>
               </li>
-              <li>
-                <Link 
-                  to="/about-us" 
-                  className="flex items-center px-4 py-3 text-font-primary-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all duration-200 group"
-                  onClick={() => setIsMobileNav(false)}
-                >
-                  <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  About Us
-                </Link>
-              </li>
+              
             </ul>
               
             </div>
@@ -120,16 +104,16 @@ function Nav() {
         )}
         {!isMobile&&<div className='flex items-center space-x-6'>
           <ul className='flex gap-6 mr-4'>
-            <li><Link to={'/items'} className='text-font-primary-700 hover:text-blue-600 font-medium transition-colors'>Products</Link></li>
-            <li><Link to={'/contact-us'} className='text-font-primary-700 hover:text-blue-600 font-medium transition-colors'>Contact Us</Link></li>
-            <li><Link to={'/about-us'} className='text-font-primary-700 hover:text-blue-600 font-medium transition-colors'>About Us</Link></li>
+            <li><Link to={'/products'} className='text-font-primary-700 hover:text-blue-600 font-medium transition-colors'>STORE</Link></li>
+            <li><Link to={'/categories'} className='text-font-primary-700 hover:text-blue-600 font-medium transition-colors'>CATEGORIES</Link></li>
+            
           </ul>
         </div>}
         <div className='flex items-center gap-4'>
           {/* Cart Button with Dropdown */}
-          <div className='relative'>
+          {logged&&<div className='relative'>
             <button 
-              className='relative p-2 hover:bg-gray-100 hover:text-font-secondary rounded-full transition-colors'
+              className='relative p-2 hover:bg-highlight hover:text-font-primary rounded-full transition-colors'
               onClick={handleCartToggle}
             >
               <AiOutlineShoppingCart className='text-3xl' />
@@ -175,7 +159,7 @@ function Nav() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-medium text-gray-800 truncate">{item.name}</h4>
-                              <p className="text-sm text-gray-600">${item.price.toFixed(2)} each</p>
+                              <p className="text-sm text-gray-600">Rs.{item.price.toFixed(2)} each</p>
                               <div className="flex items-center justify-between mt-2">
                                 <div className="flex items-center gap-2">
                                   <button 
@@ -184,7 +168,7 @@ function Nav() {
                                   >
                                     <AiOutlineMinus className="w-3 h-3" />
                                   </button>
-                                  <span className="font-medium w-8 text-center">{item.quantity}</span>
+                                  <span className="font-medium w-8 text-center text-font-secondary">{item.quantity}</span>
                                   <button 
                                     onClick={() => handleIncreaseQuantity(item.id)}
                                     className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 transition-colors"
@@ -194,7 +178,7 @@ function Nav() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="font-bold text-blue-600">
-                                    ${(item.price * item.quantity).toFixed(2)}
+                                    Rs.{(item.price * item.quantity).toFixed(2)}
                                   </span>
                                   <button 
                                     onClick={() => handleRemoveItem(item.id)}
@@ -212,7 +196,7 @@ function Nav() {
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <div className="flex justify-between items-center mb-4">
                           <span className="text-gray-600">Total:</span>
-                          <span className="font-bold text-xl text-gray-900">${getCartTotal().toFixed(2)}</span>
+                          <span className="font-bold text-xl text-gray-900">Rs.{getCartTotal().toFixed(2)}</span>
                         </div>
                         <div className="flex gap-2">
                           <Link 
@@ -236,12 +220,12 @@ function Nav() {
                 </div>
               </div>
             )}
-          </div>
+          </div>}
           
           {/* Profile Button with Dropdown */}
-          <div className='relative'>
+          {logged?<div className='relative'>
             <button 
-              className='relative p-2 hover:bg-gray-100 hover:text-font-secondary rounded-full transition-colors' 
+              className='relative p-2 hover:bg-highlight hover:text-font-primary rounded-full transition-colors' 
               onClick={handleProfileToggle}
             >
               <AiOutlineUser className='text-3xl' />
@@ -318,12 +302,21 @@ function Nav() {
               </div>
             )}
           </div>
+          :
+          <div className='relative'>
+            <button 
+              className='relative p-2 hover:bg-highlight hover:text-font-primary rounded-full transition-colors' 
+              onClick={handleProfileToggle}
+            >
+              <AiOutlineLogin className='text-3xl' />
+            </button>
+            </div>}
           
           {/* Mobile Menu Button */}
           {isMobile && (
             <button 
               className='relative p-2 hover:bg-gray-100 hover:text-font-secondary rounded-full transition-colors'
-              onClick={() => setIsMobileNav(!isMobileNav)}
+              onClick={() => handleLogout()}
             >
               {isMobileNav ? <AiFillCloseSquare className='text-3xl'/> : <AiOutlineMenu className='text-3xl' />}
             </button>

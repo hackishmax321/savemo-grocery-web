@@ -1,4 +1,7 @@
 import React from 'react'
+import { routes } from '../../constants/Routes'
+import { Link } from 'react-router-dom'
+import { FaFacebook, FaInstagram, FaLinkedin, FaTwitter } from 'react-icons/fa'
 
 function Footer() {
   return (
@@ -11,36 +14,45 @@ function Footer() {
             {/* FIGURE SECTION - Add your logo/image here */}
             <figure className="mb-6">
               <img 
-                src="/logo-white.svg" // Replace with your logo
+                src="/logo/logo-main.png" // Replace with your logo
                 alt="ShopSphere Logo" 
-                className="h-12 w-auto"
+                className="h-25 w-auto"
               />
               <figcaption className="text-center md:text-left text-sm text-white/80 mt-2">
-                Premium Shopping Experience
+                Save more & Get more
               </figcaption>
             </figure>
             
-            <p className="text-white/90 mb-6 max-w-xs text-center md:text-left">
-              Your one-stop destination for all shopping needs. Quality products with exceptional service.
+            
+
+            <p className="text-white/90 mb-4 text-center md:text-left">
+              Subscribe to our newsletter for exclusive deals and updates.
             </p>
             
-            <div className="flex space-x-4">
-              {['twitter', 'facebook', 'instagram', 'linkedin'].map((social) => (
-                <a 
-                  key={social}
-                  href="#" 
-                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors duration-300"
-                  aria-label={`Follow us on ${social}`}
+            <form className="w-full">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="email"
+                  placeholder="Your email address"
+                  className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/20"
+                />
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-white text-secondary hover:bg-white/90 font-semibold rounded-lg transition-colors duration-300 whitespace-nowrap"
                 >
-                  <span className="text-lg">
-                    {social === 'twitter' && '𝕏'}
-                    {social === 'facebook' && 'f'}
-                    {social === 'instagram' && '📷'}
-                    {social === 'linkedin' && 'in'}
-                  </span>
-                </a>
-              ))}
-            </div>
+                  Subscribe
+                </button>
+              </div>
+              <div className="mt-3">
+                <textarea 
+                  rows={3}
+                  placeholder="Your messages"
+                  className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/20 resize-y"
+                />
+              </div>
+            </form>
+            
+            
           </div>
 
           {/* Quick Links Column */}
@@ -49,15 +61,15 @@ function Footer() {
               Quick Links
             </h3>
             <ul className="space-y-3">
-              {['Home', 'Products', 'Best Sellers', 'New Arrivals', 'Deals'].map((link) => (
-                <li key={link}>
-                  <a 
-                    href="#" 
+              {routes.map(({name, path}, index) => (
+                <li key={index}>
+                  <Link 
+                    to={path} 
                     className="text-white/80 hover:text-white hover:underline transition-colors duration-200 flex items-center"
                   >
                     <span className="mr-2">→</span>
-                    {link}
-                  </a>
+                    {name}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -86,42 +98,31 @@ function Footer() {
           {/* Newsletter Column */}
           <div className="flex flex-col items-center md:items-start">
             <h3 className="text-xl font-bold mb-6 border-b border-white/20 pb-2 w-full text-center md:text-left">
-              Stay Updated
+              Stay Updated Follow us
             </h3>
-            <p className="text-white/90 mb-4 text-center md:text-left">
-              Subscribe to our newsletter for exclusive deals and updates.
+            <p className="text-white/90 mb-6 max-w-xs text-center md:text-left">
+              Your one-stop destination for all shopping needs. Quality products with exceptional service.
             </p>
             
-            <form className="w-full">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="email"
-                  placeholder="Your email address"
-                  className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/20"
-                />
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-white text-secondary hover:bg-white/90 font-semibold rounded-lg transition-colors duration-300 whitespace-nowrap"
-                >
-                  Subscribe
-                </button>
-              </div>
-            </form>
+            
             
             {/* Payment Methods FIGURE */}
-            <div className="mt-8">
-              <figure className="text-center md:text-left">
-                <figcaption className="text-sm text-white/80 mb-3">
-                  Secure Payment Methods
-                </figcaption>
-                <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                  {['💳', '🛡️', '📱', '💰'].map((icon, index) => (
-                    <span key={index} className="text-2xl bg-white/10 p-2 rounded-lg">
-                      {icon}
-                    </span>
-                  ))}
-                </div>
-              </figure>
+            <div className="flex space-x-4">
+              {['twitter', 'facebook', 'instagram', 'linkedin'].map((social) => (
+                <a 
+                  key={social}
+                  href="#" 
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors duration-300"
+                  aria-label={`Follow us on ${social}`}
+                >
+                  <span className="text-lg">
+                    {social === 'twitter' && <FaTwitter/>}
+                    {social === 'facebook' && <FaFacebook/>}
+                    {social === 'instagram' && <FaInstagram/>}
+                    {social === 'linkedin' && <FaLinkedin/>}
+                  </span>
+                </a>
+              ))}
             </div>
           </div>
         </div>
