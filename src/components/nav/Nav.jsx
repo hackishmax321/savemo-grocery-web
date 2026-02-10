@@ -200,7 +200,7 @@ function Nav() {
                         </div>
                         <div className="flex gap-2">
                           <Link 
-                            to="/cart" 
+                            to="/view-cart" 
                             className="flex-1 px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors text-center"
                             onClick={() => setIsCartOpen(false)}
                           >

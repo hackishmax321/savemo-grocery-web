@@ -7,6 +7,8 @@ import ItemsPage from './pages/ItemsPage'
 import AboutUsPage from './pages/AboutUsPage'
 import ContactUsPage from './pages/ContactUsPage'
 import OpenPage from './pages/OPenPage'
+import ViewCartPage from './pages/ViewCartPage'
+import CheckoutPage from './pages/CheckoutPage'
 
 function App() {
 
@@ -19,6 +21,8 @@ function App() {
           <Route Component={ItemsPage} path='/products'/>
           <Route Component={AboutUsPage} path='/about-us' />
           <Route Component={ContactUsPage} path='/contact-us' />
+          <Route Component={ViewCartPage} path='/view-cart' />
+          <Route Component={CheckoutPage} path='/checkout' />
           
         </Routes>
 
