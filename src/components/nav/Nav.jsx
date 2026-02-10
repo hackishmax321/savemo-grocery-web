@@ -4,27 +4,99 @@ import { Link } from 'react-router-dom'
 import { useMediaQuery } from 'react-responsive'
 import { useCart } from '../../providers/CartProvide' 
 import SearchBar from './SearchBar'
+import userService from '../../services/User.service'
 
-function Nav() {
-  const [logged, setLogged] = useState(true)
+function Nav({setShowAuth}) {
+  const [logged, setLogged] = useState(false)
   const [isOpen, setIsOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const isMobile = useMediaQuery({maxWidth: 853})
   const [isMobileNav, setIsMobileNav] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
   
   // Use cart context
   const { cart, getCartItemCount, updateCartItemQuantity, removeFromCart, getCartTotal } = useCart()
 
-  const handleLogout = () => {
-    setLogged(false)
-    setIsOpen(false)
-    // Add your logout logic here
-  }
+  useEffect(() => {
+    checkAuthStatus();
+    
+    // Listen for auth changes
+    const handleStorageChange = () => {
+      checkAuthStatus();
+    };
+    
+    // Listen for storage events (for cross-tab sync)
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Check auth status when component mounts
+    checkAuthStatus();
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const checkAuthStatus = () => {
+    const userStr = sessionStorage.getItem('currentUser');
+    const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
+    
+    if (userStr && isAuthenticated) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        setLogged(true);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        clearAuth();
+      }
+    } else {
+      clearAuth();
+    }
+  };
+
+  const clearAuth = () => {
+    setCurrentUser(null);
+    setLogged(false);
+    setIsOpen(false);
+  };
+
+  // Clear authentication data
+  const handleLogout = async () => {
+    try {
+      // Call logout from user service
+      await userService.logout();
+      
+      // Clear session storage
+      sessionStorage.removeItem('currentUser');
+      sessionStorage.removeItem('isAuthenticated');
+      
+      // Clear cart if needed
+      clearCart();
+      
+      // Reset states
+      clearAuth();
+      
+      // Show success message
+      setCurrentUser(null);
+      setLogged(false);
+      setIsOpen(false);
+      
+      // Redirect to home
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout fails, clear local data
+      sessionStorage.removeItem('currentUser');
+      sessionStorage.removeItem('isAuthenticated');
+      clearAuth();
+      window.location.href = '/';
+    }
+    
+  };
 
   const handleLogin = () => {
-    setLogged(true)
-    setIsOpen(false)
-    // Add your logout logic here
+    setShowAuth()
   }
 
   const handleCartToggle = () => {
@@ -35,6 +107,7 @@ function Nav() {
 
   const handleProfileToggle = () => {
     setIsOpen(!isOpen)
+    
     // Close cart dropdown if open
     if (isCartOpen) setIsCartOpen(false)
   }
@@ -223,90 +296,110 @@ function Nav() {
           </div>}
           
           {/* Profile Button with Dropdown */}
-          {logged?<div className='relative'>
-            <button 
-              className='relative p-2 hover:bg-highlight hover:text-font-primary rounded-full transition-colors' 
-              onClick={handleProfileToggle}
-            >
-              <AiOutlineUser className='text-3xl' />
-            </button>
-            
-            {isOpen && (
-              <div className='absolute top-full right-0 mt-3 w-64 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl z-50 border border-gray-200 animate-fadeIn'>
-                <div className="p-4 ">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
-                      <Link to={'/dashboard'} onClick={() => setIsOpen(false)}>
-                        <img
-                          src="https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg"
-                          alt="User"
-                          className="w-full h-full object-cover"
-                        />
+          {logged?(
+            <div className='relative'>
+              <button 
+                className='relative p-2 hover:bg-highlight hover:text-font-primary rounded-full transition-colors' 
+                onClick={handleProfileToggle}
+              >
+                {currentUser?.photoURL ? (
+                  <img 
+                    src={currentUser.photoURL} 
+                    alt="Profile" 
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <AiOutlineUser className='text-xl text-blue-600' />
+                  </div>
+                )}
+              </button>
+              
+              {isOpen && (
+                <div className='absolute top-full right-0 mt-3 w-64 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl z-50 border border-gray-200 animate-fadeIn'>
+                  <div className="p-4 ">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                        <Link to={'/dashboard'} onClick={() => setIsOpen(false)}>
+                          {currentUser?.photoURL ? (
+                            <img
+                              src={currentUser.photoURL}
+                              alt="User"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-blue-100 flex items-center justify-center">
+                              <AiOutlineUser className='text-2xl text-blue-600' />
+                            </div>
+                          )}
+                        </Link>
+                      </div>
+                      <div className='text-left flex-1 min-w-0'>
+                        <h3 className="font-semibold text-gray-800 truncate">
+                          {currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User'}
+                        </h3>
+                        <p className="text-sm text-gray-600 truncate">{currentUser?.email || ''}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2 mb-4">
+                      <Link 
+                        to="/dashboard" 
+                        className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <svg className="w-5 h-5 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        My Profile
+                      </Link>
+                      <Link 
+                        to="/orders" 
+                        className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <svg className="w-5 h-5 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        My Orders
+                      </Link>
+                      <Link 
+                        to="/wishlist" 
+                        className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <svg className="w-5 h-5 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                        Wishlist
                       </Link>
                     </div>
-                    <div className='text-left flex-1 min-w-0'>
-                      <h3 className="font-semibold text-gray-800 truncate">Jehan Perera</h3>
-                      <p className="text-sm text-gray-600 truncate">john@example.com</p>
+                    
+                    <div className='flex gap-2'>
+                      <button 
+                        onClick={handleLogout}
+                        className='flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center'
+                      >
+                        LOGOUT
+                      </button>
+                      <Link 
+                        to="/settings" 
+                        className='px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center'
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <AiOutlineSetting className="w-5 h-5" />
+                      </Link>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2 mb-4">
-                    <Link 
-                      to="/dashboard" 
-                      className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      <svg className="w-5 h-5 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      My Profile
-                    </Link>
-                    <Link 
-                      to="/orders" 
-                      className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      <svg className="w-5 h-5 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      My Orders
-                    </Link>
-                    <Link 
-                      to="/wishlist" 
-                      className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      <svg className="w-5 h-5 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      Wishlist
-                    </Link>
-                  </div>
-                  
-                  <div className='flex gap-2'>
-                    <button 
-                      onClick={handleLogout}
-                      className='flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center'
-                    >
-                      LOGOUT
-                    </button>
-                    <Link 
-                      to="/settings" 
-                      className='px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center'
-                      onClick={() => setIsOpen(false)}
-                    >
-                      <AiOutlineSetting className="w-5 h-5" />
-                    </Link>
-                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )
           :
           <div className='relative'>
             <button 
               className='relative p-2 hover:bg-highlight hover:text-font-primary rounded-full transition-colors' 
-              onClick={handleProfileToggle}
+              onClick={handleLogin}
             >
               <AiOutlineLogin className='text-3xl' />
             </button>
