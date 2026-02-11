@@ -14,6 +14,9 @@ import DashboardLayout from './components/dashboard/DashboardLayout'
 import DashboardHomePage from './components/dashboard/DashboardHomePage'
 import ProfilePage from './components/dashboard/ProfilePage'
 import ItemsManagementPage from './components/dashboard/ItemsManagementPage'
+import ReturnPolicyPage from './pages/ReturnPolicyPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import TermsConditionsPage from './pages/TermsConditionsPage'
 
 function App() {
   const [showAuth, setShowAuth] = useState(false)
@@ -34,6 +37,9 @@ function App() {
         <Route path='/contact-us' element={<ContactUsPage />} />
         <Route path='/view-cart' element={<ViewCartPage />} />
         <Route path='/checkout' element={<CheckoutPage />} />
+        <Route path='/return' element={<ReturnPolicyPage />} />
+        <Route path='/privacy-policy' element={<PrivacyPolicyPage />} />
+        <Route path='/terms-conditions' element={<TermsConditionsPage />} />
 
         <Route path='/dashboard' element={<DashboardLayout />}>
           <Route index element={<DashboardHomePage />} />

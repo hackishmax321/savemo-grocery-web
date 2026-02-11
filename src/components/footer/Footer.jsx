@@ -1,9 +1,63 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { routes } from '../../constants/Routes'
 import { Link } from 'react-router-dom'
 import { FaFacebook, FaInstagram, FaLinkedin, FaTwitter } from 'react-icons/fa'
+import contactService from '../../services/Contact.service';
 
 function Footer() {
+  const [footerForm, setFooterForm] = useState({
+    email: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
+  const handleFooterSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    // Prepare contact data with fixed values for required fields
+    const contactData = {
+      name: "Newsletter Subscriber", // Fixed value
+      email: footerForm.email,
+      phone: "", // Empty as not required
+      subject: "Newsletter/Contact from Footer", // Fixed subject
+      message: footerForm.message || `Newsletter subscription request from ${footerForm.email}`
+    };
+
+    try {
+      // Use contact service to save to database
+      const result = await contactService.submitContactMessage(contactData);
+      
+      if (result.success) {
+        setSubmitSuccess(true);
+        setFooterForm({ email: '', message: '' });
+        
+        // Reset success message after 3 seconds
+        setTimeout(() => {
+          setSubmitSuccess(false);
+        }, 3000);
+      } else {
+        setSubmitError(result.error || 'Failed to submit. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting footer contact:', error);
+      setSubmitError('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFooterInputChange = (e) => {
+    setFooterForm({
+      ...footerForm,
+      [e.target.name]: e.target.value
+    });
+    if (submitError) setSubmitError('');
+  };
+
   return (
     <footer className=" bg-secondary/80 text-white">
       <div className="container mx-auto px-4 py-12">
@@ -29,22 +83,42 @@ function Footer() {
               Subscribe to our newsletter for exclusive deals and updates.
             </p>
             
-            <form className="w-full">
+            <form className="w-full" onSubmit={handleFooterSubmit}>
+              {submitSuccess && (
+                <div className="mb-3 p-2 bg-green-500/20 text-green-100 text-sm rounded">
+                  ✓ Message sent successfully!
+                </div>
+              )}
+              
+              {submitError && (
+                <div className="mb-3 p-2 bg-red-500/20 text-red-100 text-sm rounded">
+                  {submitError}
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="email"
+                  name="email"
+                  value={footerForm.email}
+                  onChange={handleFooterInputChange}
                   placeholder="Your email address"
                   className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/20"
                 />
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-white text-secondary hover:bg-white/90 font-semibold rounded-lg transition-colors duration-300 whitespace-nowrap"
+                  disabled={isSubmitting}
+                  className={`px-6 py-3 bg-white text-secondary font-semibold rounded-lg transition-colors duration-300 whitespace-nowrap ${
+                    isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-white/90'
+                  }`}
                 >
-                  Subscribe
+                  {isSubmitting ? 'Sending...' : 'Subscribe'}
                 </button>
               </div>
               <div className="mt-3">
                 <textarea 
+                  name="message"
+                  value={footerForm.message}
+                  onChange={handleFooterInputChange}
                   rows={3}
                   placeholder="Your messages"
                   className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/20 resize-y"
@@ -135,16 +209,22 @@ function Footer() {
             </div>
             
             <div className="flex flex-wrap justify-center gap-6 text-sm">
-              {['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Return Policy'].map((link) => (
-                <a 
-                  key={link}
-                  href="#" 
+              {[
+                { label: 'Privacy Policy', path: '/privacy-policy' },
+                { label: 'Terms of Service', path: '/terms-conditions' },
+                // { label: 'Cookie Policy', path: '/cookie-policy' }, 
+                { label: 'Return Policy', path: '/return' },
+              ].map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
                   className="text-white/70 hover:text-white transition-colors"
                 >
-                  {link}
-                </a>
+                  {item.label}
+                </Link>
               ))}
             </div>
+
           </div>
         </div>
       </div>

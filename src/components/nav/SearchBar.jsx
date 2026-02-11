@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { AiOutlineSearch, AiOutlineCaretDown } from 'react-icons/ai';
-import {Categories} from '../../constants/Categories'; // Adjust path as needed
+import {Categories} from '../../constants/Categories';
+import { useNavigate } from 'react-router-dom';
 
 function SearchBar() {
+    const navigate = useNavigate();
     const [term, setTerm] = useState('');
     const [category, setCategory] = useState('All Categories');
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -16,8 +18,20 @@ function SearchBar() {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        // Implement search logic here
-        console.log('Searching for:', term, 'in category:', category);
+        const searchParams = new URLSearchParams();
+        
+        // Add search term if exists
+        if (term.trim()) {
+            searchParams.append('q', term.trim());
+        }
+        
+        // Add category if not "All Categories"
+        if (category !== 'All Categories') {
+            searchParams.append('category', category);
+        }
+        
+        // Navigate to products page with search params
+        navigate(`/products?${searchParams.toString()}`);
     };
 
     const handleCategorySelect = (catName) => {

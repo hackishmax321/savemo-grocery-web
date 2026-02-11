@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaClock, FaFacebook, FaInstagram, FaTwitter, FaPaperPlane, FaLinkedin } from 'react-icons/fa';
 import MapWrapper from '../components/maps/MapWrapper';
+import contactService from '../services/Contact.service';
 
 function ContactUsPage() {
   const [formData, setFormData] = useState({
@@ -13,36 +14,58 @@ function ContactUsPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    if (submitError) setSubmitError('');  
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => { // CHANGED: Make async
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(''); // Clear previous errors
     
-    // Simulate API call
-    setTimeout(() => {
+    // Validate form data
+    const validation = contactService.validateContactData(formData);
+    if (!validation.isValid) {
+      setSubmitError(Object.values(validation.errors)[0]);
       setIsSubmitting(false);
-      setSubmitSuccess(true);
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        subject: '',
-        message: ''
-      });
+      return;
+    }
+    
+    try {
+      // Submit to Firestore using contact service
+      const result = await contactService.submitContactMessage(formData);
       
-      // Reset success message after 5 seconds
-      setTimeout(() => {
-        setSubmitSuccess(false);
-      }, 5000);
-    }, 1500);
+      if (result.success) {
+        setSubmitSuccess(true);
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          subject: '',
+          message: ''
+        });
+        
+        // Reset success message after 5 seconds
+        setTimeout(() => {
+          setSubmitSuccess(false);
+        }, 5000);
+      } else {
+        setSubmitError(result.error || 'Failed to submit message. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      setSubmitError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
 
   const contactInfo = [
     {
@@ -151,6 +174,13 @@ function ContactUsPage() {
               </div>
             )}
 
+            {submitError && (
+              <div className='mb-6 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200'>
+                <p className='font-semibold'>Submission Error</p>
+                <p className='text-sm'>{submitError}</p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className='space-y-6'>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                 <div>
@@ -240,7 +270,7 @@ function ContactUsPage() {
                 className={`w-full py-4 px-6 rounded-lg text-white font-semibold transition-all duration-300 ${
                   isSubmitting 
                     ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-font-secondary hover:bg-font-primary transform hover:-translate-y-1'
+                    : 'bg-font-secondary hover:bg-font-alternate transform hover:-translate-y-1'
                 }`}
               >
                 {isSubmitting ? (

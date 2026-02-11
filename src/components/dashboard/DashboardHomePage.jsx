@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   FaShoppingCart, 
   FaMoneyBillWave, 
@@ -10,10 +10,32 @@ import {
   FaCheckCircle,
   FaInfoCircle,
   FaCalendarAlt,
-  FaBell
+  FaBell,
+  FaEnvelope, // ADDED
+  FaReply, // ADDED
+  FaCheck, // ADDED
+  FaArchive // ADDED
 } from 'react-icons/fa';
+import contactService from '../../services/Contact.service';
 
 function DashboardHomePage() {
+  // variables
+  const [contactMessages, setContactMessages] = useState([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+  const [contactError, setContactError] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [stats, setStats] = useState({
+    totalMessages: 0,
+    unreadMessages: 0,
+    todayMessages: 0
+  });
+
   // Summary card data
   const summaryCards = [
     {
@@ -29,7 +51,7 @@ function DashboardHomePage() {
     {
       id: 2,
       title: "Monthly Revenue",
-      value: "$45,289",
+      value: "Rs.45,289",
       change: "+8.2%",
       isPositive: true,
       icon: <FaMoneyBillWave className="text-3xl" />,
@@ -59,126 +81,140 @@ function DashboardHomePage() {
   ];
 
   // Notification data
-  const notifications = [
-    {
-      id: 1,
-      title: "Low Stock Alert",
-      message: "Milk inventory is below minimum threshold (5 units remaining)",
-      time: "10 minutes ago",
-      type: "warning",
-      icon: <FaExclamationTriangle className="text-yellow-500" />,
-      category: "inventory",
-      read: false
-    },
-    {
-      id: 2,
-      title: "New Order Received",
-      message: "Order #ORD-2024-0012 has been placed by John Doe",
-      time: "45 minutes ago",
-      type: "success",
-      icon: <FaShoppingCart className="text-green-500" />,
-      category: "order",
-      read: false
-    },
-    {
-      id: 3,
-      title: "Promotion Ending Soon",
-      message: "Summer Sale promotion ends in 2 days",
-      time: "2 hours ago",
-      type: "info",
-      icon: <FaTag className="text-blue-500" />,
-      category: "promotion",
-      read: true
-    },
-    {
-      id: 4,
-      title: "New User Registration",
-      message: "Sarah Johnson has registered as a new customer",
-      time: "3 hours ago",
-      type: "info",
-      icon: <FaUsers className="text-purple-500" />,
-      category: "user",
-      read: true
-    },
-    {
-      id: 5,
-      title: "High Selling Item",
-      message: "Organic Apples sold 45 units today - Consider restocking",
-      time: "5 hours ago",
-      type: "success",
-      icon: <FaChartLine className="text-green-500" />,
-      category: "sales",
-      read: true
-    },
-    {
-      id: 6,
-      title: "System Maintenance",
-      message: "Scheduled maintenance on Sunday, 2:00 AM - 4:00 AM",
-      time: "1 day ago",
-      type: "info",
-      icon: <FaInfoCircle className="text-blue-500" />,
-      category: "system",
-      read: true
-    },
-    {
-      id: 7,
-      title: "Order Delivered",
-      message: "Order #ORD-2024-0010 has been successfully delivered",
-      time: "1 day ago",
-      type: "success",
-      icon: <FaCheckCircle className="text-green-500" />,
-      category: "order",
-      read: true
-    },
-    {
-      id: 8,
-      title: "Payment Failed",
-      message: "Payment for Order #ORD-2024-0009 failed. Retry initiated",
-      time: "2 days ago",
-      type: "warning",
-      icon: <FaExclamationTriangle className="text-yellow-500" />,
-      category: "payment",
-      read: true
-    }
-  ];
+  const notifications = [];
 
   // Recent activities
-  const recentActivities = [
-    {
-      id: 1,
-      action: "Item Added",
-      details: "Organic Bananas added to inventory",
-      user: "Admin User",
-      time: "Just now",
-      icon: <FaBoxOpen className="text-blue-500" />
-    },
-    {
-      id: 2,
-      action: "Price Updated",
-      details: "Milk price updated from $3.49 to $3.29",
-      user: "Inventory Manager",
-      time: "30 minutes ago",
-      icon: <FaMoneyBillWave className="text-green-500" />
-    },
-    {
-      id: 3,
-      action: "Stock Restocked",
-      details: "Chicken Breast restocked (+50 units)",
-      user: "Warehouse Staff",
-      time: "1 hour ago",
-      icon: <FaShoppingCart className="text-purple-500" />
-    },
-    {
-      id: 4,
-      action: "Promotion Created",
-      details: "Weekly Sale promotion created",
-      user: "Marketing Manager",
-      time: "2 hours ago",
-      icon: <FaTag className="text-yellow-500" />
-    }
-  ];
+  const recentActivities = [];
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = contactMessages.length;
+
+  
+
+  useEffect(() => {
+    loadContactMessages();
+    loadContactStats();
+  }, []);
+
+  const loadContactMessages = async (loadMore = false) => {
+    setIsLoadingContacts(true);
+    try {
+      const result = await contactService.getAllMessages(
+        { isRead: false }, // Show unread first
+        10, // Limit per page
+        loadMore ? lastDoc : null
+      );
+      
+      if (result.success) {
+        if (loadMore) {
+          setContactMessages(prev => [...prev, ...result.messages]);
+        } else {
+          setContactMessages(result.messages);
+        }
+        setHasMoreMessages(result.hasMore);
+        setLastDoc(result.lastDoc);
+      } else {
+        setContactError('Failed to load contact messages');
+      }
+    } catch (error) {
+      console.error('Error loading contacts:', error);
+      setContactError('Error loading messages');
+    } finally {
+      setIsLoadingContacts(false);
+    }
+  };
+
+  const loadContactStats = async () => {
+    try {
+      const result = await contactService.getMessageStats();
+      if (result.success) {
+        setStats(result.stats);
+      }
+    } catch (error) {
+      console.error('Error loading contact stats:', error);
+    }
+  };
+
+  const handleMarkAsRead = async (messageId) => {
+    try {
+      const result = await contactService.markAsRead(messageId, 'admin');
+      if (result.success) {
+        // Remove from list or update UI
+        setContactMessages(prev => 
+          prev.filter(msg => msg.id !== messageId)
+        );
+        loadContactStats(); // Refresh stats
+      }
+    } catch (error) {
+      console.error('Error marking as read:', error);
+    }
+  };
+
+  const handleOpenReply = (message) => {
+    setSelectedMessage(message);
+    setReplyModalOpen(true);
+    setReplyText('');
+  };
+
+  const handleSubmitReply = async () => {
+    if (!replyText.trim() || !selectedMessage) return;
+    
+    setIsReplying(true);
+    try {
+      const result = await contactService.replyToMessage(selectedMessage.id, {
+        replyMessage: replyText,
+        repliedBy: 'Admin User', // Get from auth context
+        email: selectedMessage.email,
+        name: selectedMessage.name
+      });
+      
+      if (result.success) {
+        setReplyModalOpen(false);
+        setReplyText('');
+        // Remove from list after replying
+        setContactMessages(prev => 
+          prev.filter(msg => msg.id !== selectedMessage.id)
+        );
+        loadContactStats(); // Refresh stats
+      }
+    } catch (error) {
+      console.error('Error sending reply:', error);
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const handleArchiveMessage = async (messageId) => {
+    try {
+      const result = await contactService.archiveMessage(messageId);
+      if (result.success) {
+        setContactMessages(prev => 
+          prev.filter(msg => msg.id !== messageId)
+        );
+        loadContactStats(); // Refresh stats
+      }
+    } catch (error) {
+      console.error('Error archiving message:', error);
+    }
+  };
+
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 60) return `${diffMins} minutes ago`;
+      if (diffHours < 24) return `${diffHours} hours ago`;
+      if (diffDays < 7) return `${diffDays} days ago`;
+      return date.toLocaleDateString();
+    } catch {
+      return 'Invalid date';
+    }
+  };
 
   return (
     <div className="w-full">
@@ -229,62 +265,133 @@ function DashboardHomePage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-50 rounded-lg">
-                    <FaBell className="text-blue-600 text-xl" />
+                    <FaEnvelope className="text-blue-600 text-xl" /> {/* UPDATED: FaBell to FaEnvelope */}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Notifications</h2>
-                    <p className="text-gray-600">Recent alerts and updates</p>
+                    <h2 className="text-2xl font-bold text-gray-800">Contact Messages</h2>
+                    <p className="text-gray-600">Customer inquiries and feedback</p>
                   </div>
                 </div>
                 {unreadCount > 0 && (
                   <span className="bg-red-500 text-white text-sm font-semibold px-3 py-1 rounded-full">
-                    {unreadCount} new
+                    {unreadCount} unread
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-              {notifications.map((notification) => (
-                <div 
-                  key={notification.id} 
-                  className={`p-4 hover:bg-gray-50 transition-colors duration-200 ${
-                    !notification.read ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="mt-1">
-                      {notification.icon}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-semibold text-gray-800">{notification.title}</h4>
-                        <span className="text-xs text-gray-500">{notification.time}</span>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-2">{notification.message}</p>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          notification.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                          notification.type === 'success' ? 'bg-green-100 text-green-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {notification.category}
-                        </span>
-                        {!notification.read && (
-                          <span className="text-xs text-blue-600 font-medium">NEW</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* Loading State */}
+            {isLoadingContacts && (
+              <div className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-gray-500 mt-2">Loading messages...</p>
+              </div>
+            )}
 
-            <div className="p-4 border-t border-gray-200 bg-gray-50">
-              <button className="w-full text-center text-blue-600 hover:text-blue-800 font-medium py-2">
-                View All Notifications
-              </button>
-            </div>
+            {/* Error State */}
+            {contactError && !isLoadingContacts && (
+              <div className="p-8 text-center text-red-600">
+                <p>{contactError}</p>
+                <button 
+                  onClick={() => loadContactMessages()}
+                  className="mt-2 text-blue-600 hover:text-blue-800"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {/* Messages List */}
+            {!isLoadingContacts && !contactError && (
+              <>
+                <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+                  {contactMessages.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <FaEnvelope className="text-4xl mx-auto mb-2 text-gray-300" />
+                      <p>No unread messages</p>
+                      <p className="text-sm mt-1">All caught up!</p>
+                    </div>
+                  ) : (
+                    contactMessages.map((message) => (
+                      <div 
+                        key={message.id} 
+                        className="p-4 hover:bg-gray-50 transition-colors duration-200 bg-blue-50"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1">
+                            <FaEnvelope className="text-blue-500" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <div>
+                                <h4 className="font-semibold text-gray-800">
+                                  {message.name || 'Anonymous'}
+                                </h4>
+                                <p className="text-xs text-gray-500">{message.email}</p>
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {formatMessageTime(message.createdAt)}
+                              </span>
+                            </div>
+                            <div className="mb-2">
+                              <span className="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                {message.subject || 'General Inquiry'}
+                              </span>
+                              {message.phone && (
+                                <span className="text-xs text-gray-500 ml-2">
+                                  📞 {message.phone}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-600 text-sm mb-3">
+                              {message.message}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleMarkAsRead(message.id)}
+                                className="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors flex items-center gap-1"
+                                title="Mark as read"
+                              >
+                                <FaCheck className="text-xs" />
+                                Mark Read
+                              </button>
+                              <button
+                                onClick={() => handleOpenReply(message)}
+                                className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors flex items-center gap-1"
+                                title="Reply"
+                              >
+                                <FaReply className="text-xs" />
+                                Reply
+                              </button>
+                              <button
+                                onClick={() => handleArchiveMessage(message.id)}
+                                className="text-xs px-3 py-1 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors flex items-center gap-1"
+                                title="Archive"
+                              >
+                                <FaArchive className="text-xs" />
+                                Archive
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Load More Button */}
+                {hasMoreMessages && (
+                  <div className="p-4 border-t border-gray-200 bg-gray-50">
+                    <button
+                      onClick={() => loadContactMessages(true)}
+                      className="w-full text-center text-blue-600 hover:text-blue-800 font-medium py-2"
+                    >
+                      Load More Messages
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
