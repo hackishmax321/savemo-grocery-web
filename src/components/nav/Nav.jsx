@@ -344,7 +344,7 @@ function Nav({setShowAuth}) {
                     
                     <div className="space-y-2 mb-4">
                       <Link 
-                        to="/dashboard" 
+                        to="/dashboard/profile" 
                         className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                         onClick={() => setIsOpen(false)}
                       >
@@ -418,7 +418,7 @@ function Nav({setShowAuth}) {
       </div>
       
       {/* Add fadeIn animation to CSS or inline styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;

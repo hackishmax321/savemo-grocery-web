@@ -141,3 +141,16 @@ export const Categories = [
     subcategories: ["Prepared Salads", "Sandwiches", "Rotisserie Chicken", "Sushi", "Hot Foods"]
   }
 ];
+
+// Unit types
+export const UnitTypes = [
+  { id: "g", name: "Grams", symbol: "g", category: "weight" },
+  { id: "kg", name: "Kilograms", symbol: "kg", category: "weight" },
+  { id: "ml", name: "Milliliters", symbol: "ml", category: "volume" },
+  { id: "l", name: "Liters", symbol: "L", category: "volume" },
+  { id: "piece", name: "Piece", symbol: "pc", category: "count" },
+  { id: "pack", name: "Pack", symbol: "pack", category: "count" },
+  { id: "bottle", name: "Bottle", symbol: "bottle", category: "count" },
+  { id: "box", name: "Box", symbol: "box", category: "count" },
+  { id: "dozen", name: "Dozen", symbol: "dozen", category: "count" }
+];

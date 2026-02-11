@@ -95,7 +95,7 @@ function ItemCard({ item }) {
           </div>
           <button 
             onClick={handleAddToCart} // Updated to use handleAddToCart
-            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${inStock ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+            className={`px-4 py-2 text-xs rounded-lg font-medium transition-all duration-200 ${inStock ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
             disabled={!inStock}
           >
             {inStock ? 'Add to Cart' : 'Out of Stock'}

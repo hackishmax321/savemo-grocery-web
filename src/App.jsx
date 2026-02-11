@@ -1,42 +1,59 @@
 import { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import './App.css'
 import Nav from './components/nav/Nav'
 import Footer from './components/footer/Footer'
 import ItemsPage from './pages/ItemsPage'
 import AboutUsPage from './pages/AboutUsPage'
 import ContactUsPage from './pages/ContactUsPage'
-import OpenPage from './pages/OPenPage'
+import OpenPage from './pages/OpenPage'
 import ViewCartPage from './pages/ViewCartPage'
 import CheckoutPage from './pages/CheckoutPage'
 import AuthModal from './components/modals/AuthModal'
+import DashboardLayout from './components/dashboard/DashboardLayout'
+import DashboardHomePage from './components/dashboard/DashboardHomePage'
+import ProfilePage from './components/dashboard/ProfilePage'
+import ItemsManagementPage from './components/dashboard/ItemsManagementPage'
 
 function App() {
   const [showAuth, setShowAuth] = useState(false)
+  
+  const location = useLocation()
+  const isDashboardRoute = location.pathname.startsWith('/dashboard')
 
   return (
     <div className=''>
-      <Router>
-        <Nav setShowAuth={() => setShowAuth(!showAuth)}/>
-        {showAuth&&<AuthModal isOpen={true} onClose={() => {
-          setShowAuth(false)
-        }} />}
-        <Routes>
-          <Route Component={OpenPage} path='/'/>
-          <Route Component={ItemsPage} path='/products'/>
-          <Route Component={AboutUsPage} path='/about-us' />
-          <Route Component={ContactUsPage} path='/contact-us' />
-          <Route Component={ViewCartPage} path='/view-cart' />
-          <Route Component={CheckoutPage} path='/checkout' />
-          
-        </Routes>
+      <Nav setShowAuth={() => setShowAuth(!showAuth)}/>
+      {showAuth && <AuthModal isOpen={true} onClose={() => {
+        setShowAuth(false)
+      }} />}
+      <Routes>
+        <Route path='/' element={<OpenPage />} />
+        <Route path='/products' element={<ItemsPage />} />
+        <Route path='/about-us' element={<AboutUsPage />} />
+        <Route path='/contact-us' element={<ContactUsPage />} />
+        <Route path='/view-cart' element={<ViewCartPage />} />
+        <Route path='/checkout' element={<CheckoutPage />} />
 
-        <Footer />
+        <Route path='/dashboard' element={<DashboardLayout />}>
+          <Route index element={<DashboardHomePage />} />
+          <Route path='profile' element={<ProfilePage />} />
+          <Route path='items-management' element={<ItemsManagementPage />} />
+        </Route>
+      </Routes>
 
-      </Router>
-      
+      {!isDashboardRoute && <Footer />}
+
     </div>
   )
 }
 
-export default App
+function AppWrapper() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  )
+}
+
+export default AppWrapper

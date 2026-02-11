@@ -11,7 +11,7 @@ const carouselSlides = [
     title: 'Welcome to Our Marketplace',
     description: 'Discover amazing items from trusted sellers',
     buttonText: 'Shop Now',
-    overlayPosition: 'bottom-left' // You can customize positions
+    overlayPosition: 'bottom-right' // You can customize positions
   },
   {
     id: 2,
@@ -19,7 +19,7 @@ const carouselSlides = [
     title: 'Summer Collection 2024',
     description: 'Hot deals up to 50% off',
     buttonText: 'Explore Deals',
-    overlayPosition: 'bottom-center'
+    overlayPosition: 'bottom-right'
   },
 ];
 
