@@ -135,7 +135,7 @@ function Nav({setShowAuth}) {
       <div className='container mx-auto px-1.5 py-2 inset-0 flex justify-between items-center'>
         <div className='text-xl font-bold '>
           <Link to={'/'}>
-            <img src='/logo/logo-main.png' className='h-15'/>
+            <img src='/logo/logo-main2.png' className='h-15 object-contain'/>
           </Link>
         </div>
         {/* Search bar */}

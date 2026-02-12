@@ -38,8 +38,8 @@ function App() {
         <Route path='/view-cart' element={<ViewCartPage />} />
         <Route path='/checkout' element={<CheckoutPage />} />
         <Route path='/return' element={<ReturnPolicyPage />} />
-        <Route path='/privacy-policy' element={<PrivacyPolicyPage />} />
-        <Route path='/terms-conditions' element={<TermsConditionsPage />} />
+        <Route path='/policy' element={<PrivacyPolicyPage />} />
+        <Route path='/terms' element={<TermsConditionsPage />} />
 
         <Route path='/dashboard' element={<DashboardLayout />}>
           <Route index element={<DashboardHomePage />} />

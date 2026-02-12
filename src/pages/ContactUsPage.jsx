@@ -71,19 +71,19 @@ function ContactUsPage() {
     {
       icon: <FaPhone className="text-xl" />,
       title: 'Call Us',
-      details: ['+94 11 234 5678', '+94 77 123 4567'],
+      details: ['+94 777 258 358'],
       description: 'Available 7:00 AM - 10:00 PM daily'
     },
     {
       icon: <FaEnvelope className="text-xl" />,
       title: 'Email Us',
-      details: ['info@savemo.lk', 'support@savemo.lk'],
+      details: ['savemoshop@gmail.com'],
       description: 'We respond within 24 hours'
     },
     {
       icon: <FaMapMarkerAlt className="text-xl" />,
       title: 'Visit Us',
-      details: ['123 Galle Road, Wattala', '456 Maradana Road, Colombo 10', '789 Galle Road, Dehiwala', '321 Kandy Road, Malabe'],
+      details: ['No.69, Temple Avenue, Colombo 10, Sri Lanka'],
       description: 'Four convenient locations'
     },
     {

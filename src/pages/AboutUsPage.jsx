@@ -7,28 +7,28 @@ function AboutUsPage() {
       name: 'Wattala Branch',
       address: '123 Galle Road, Wattala, Sri Lanka',
       hours: '7:00 AM - 10:00 PM',
-      phone: '+94 11 234 5678',
+      phone: '+94 777 258 358',
       image: 'https://lh3.googleusercontent.com/p/AF1QipM3z6v4mD-kd6vG66h457yLy1B_k2OOQ0A5cbL5=s680-w680-h510-rw'
     },
     {
       name: 'Colombo 10 Branch',
       address: '456 Maradana Road, Colombo 10, Sri Lanka',
       hours: '6:00 AM - 11:00 PM',
-      phone: '+94 11 345 6789',
+      phone: '+94 777 258 358',
       image: 'https://lh3.googleusercontent.com/p/AF1QipO_emgbss0VXPTTFvSOWOr-L1vZSel0o2ktrv15=s680-w680-h510-rw'
     },
     {
       name: 'Dehiwala Branch',
       address: '789 Galle Road, Dehiwala, Sri Lanka',
       hours: '7:00 AM - 10:00 PM',
-      phone: '+94 11 456 7890',
+      phone: '+94 777 258 358',
       image: 'https://lh3.googleusercontent.com/p/AF1QipNwkMujXiKxVZ_zTF8MpU_sWYbo9ItV2AKsXF9A=s680-w680-h510-rw'
     },
     {
       name: 'Malabe Branch',
       address: '321 Kandy Road, Malabe, Sri Lanka',
       hours: '8:00 AM - 9:00 PM',
-      phone: '+94 11 567 8901',
+      phone: '+94 777 258 358',
       image: 'https://lh3.googleusercontent.com/p/AF1QipNwkMujXiKxVZ_zTF8MpU_sWYbo9ItV2AKsXF9A=s680-w680-h510-rw'
     }
   ];

@@ -298,7 +298,7 @@ function TermsConditionsPage() {
               
               <div className='mt-4 pt-4 border-t border-gray-200'>
                 <a 
-                  href="/contact" 
+                  href="/contact-us" 
                   className='text-font-secondary hover:text-font-alternate font-medium text-sm flex items-center gap-2 transition-colors'
                 >
                   Contact Customer Support →
@@ -366,7 +366,7 @@ function TermsConditionsPage() {
                 <a href="/privacy" className='px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium'>
                   Privacy Policy
                 </a>
-                <a href="/contact" className='px-4 py-2 bg-font-secondary text-white rounded-lg hover:bg-font-alternate transition-colors text-sm font-medium'>
+                <a href="/contact-us" className='px-4 py-2 bg-font-secondary text-white rounded-lg hover:bg-font-alternate transition-colors text-sm font-medium'>
                   Contact Us
                 </a>
               </div>

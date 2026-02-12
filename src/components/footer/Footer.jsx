@@ -210,8 +210,8 @@ function Footer() {
             
             <div className="flex flex-wrap justify-center gap-6 text-sm">
               {[
-                { label: 'Privacy Policy', path: '/privacy-policy' },
-                { label: 'Terms of Service', path: '/terms-conditions' },
+                { label: 'Privacy Policy', path: '/policy' },
+                { label: 'Terms of Service', path: '/terms' },
                 // { label: 'Cookie Policy', path: '/cookie-policy' }, 
                 { label: 'Return Policy', path: '/return' },
               ].map((item) => (
