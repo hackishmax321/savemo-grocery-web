@@ -3,7 +3,7 @@ import { AiFillStar, AiOutlineStar } from 'react-icons/ai'
 import { IoFilter, IoRefresh } from 'react-icons/io5'
 import { Categories } from '../../constants/Categories'
 
-function FilterContainer({ allItems = [], onFilterChange }) {
+function FilterContainer({ allItems = [], onFilterChange, initialFilters = null, searchTerm = '', onReset  }) {
   const [priceRange, setPriceRange] = useState([0, 2000])
   const [selectedCategories, setSelectedCategories] = useState({})
   const [filters, setFilters] = useState({
@@ -20,13 +20,28 @@ function FilterContainer({ allItems = [], onFilterChange }) {
     Categories.forEach(category => {
       initialCategories[category.id] = false
     })
+    
+    // Apply initial filters if provided
+    if (initialFilters) {
+      // Set category filter
+      if (initialFilters.category) {
+        const category = Categories.find(cat => cat.name === initialFilters.category)
+        if (category) {
+          initialCategories[category.id] = true
+        }
+      }
+      
+      // Set search term filter (will be handled in parent component)
+      // Price range, ratings, availability remain default
+    }
+    
     setSelectedCategories(initialCategories)
-  }, [])
+  }, [initialFilters])
 
   // Apply filters when any filter changes
   useEffect(() => {
     applyFilters()
-  }, [priceRange, filters, selectedCategories])
+  }, [priceRange, filters, selectedCategories, searchTerm])
 
   const handlePriceChange = (index, value) => {
     const newRange = [...priceRange]
@@ -66,6 +81,7 @@ function FilterContainer({ allItems = [], onFilterChange }) {
     Categories.forEach(category => {
       resetCategories[category.id] = false
     })
+    
     setSelectedCategories(resetCategories)
     setFilters({
       ratings: {
@@ -74,6 +90,7 @@ function FilterContainer({ allItems = [], onFilterChange }) {
       },
       availability: true
     })
+    onReset();
   }
 
   const applyFilters = () => {
@@ -109,6 +126,14 @@ function FilterContainer({ allItems = [], onFilterChange }) {
       filtered = filtered.filter(item => item.inStock)
     }
 
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.name.toLowerCase().includes(term) || 
+        item.description.toLowerCase().includes(term)
+      );
+    }
+
     // Pass filtered items to parent
     onFilterChange(filtered)
   }
@@ -124,6 +149,16 @@ function FilterContainer({ allItems = [], onFilterChange }) {
 
   return (
     <div className='bg-white border border-gray-200 rounded-xl p-6 shadow-lg w-full max-w-xs sticky top-6'>
+      {searchTerm && (
+        <div className='mb-4 p-2 bg-blue-50 rounded-lg'>
+          <div className='flex items-center justify-between'>
+            <span className='text-sm text-blue-700 font-medium'>
+              Search: "{searchTerm}"
+            </span>
+            {/* Optional: Add clear search button if needed */}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className='flex items-center justify-between mb-4'>
         <h1 className='text-xl font-bold text-gray-800 flex items-center gap-2'>

@@ -4,12 +4,16 @@ import FilterContainer from '../components/container/FilterContainer'
 import groceryService from '../services/Item.service'
 import { Categories } from '../constants/Categories'
 import { sampleItems } from '../constants/SampleItems'
+import { useSearchParams } from 'react-router-dom'
 
 function ItemsPage() {
+  const [searchParams] = useSearchParams();
   const [filteredItems, setFilteredItems] = useState([])
   const [allItems, setAllItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [initialFilters, setInitialFilters] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Function to transform Firebase item to required format
   const transformItem = (firebaseItem) => {
@@ -62,6 +66,57 @@ function ItemsPage() {
     }
   }
 
+  const parseUrlParams = () => {
+    const filters = {};
+    
+    // Get search term
+    const searchTerm = searchParams.get('q');
+    if (searchTerm) {
+      filters.searchTerm = searchTerm;
+      // ADDED: Store search term in state
+      setSearchTerm(searchTerm);
+    }
+    
+    // Get category
+    const categoryName = searchParams.get('category');
+    if (categoryName) {
+      const category = Categories.find(cat => 
+        cat.name.toLowerCase() === categoryName.toLowerCase()
+      );
+      if (category) {
+        filters.category = category.name;
+      }
+    }
+    
+    return Object.keys(filters).length > 0 ? filters : null;
+  };
+
+  const applySearchFilter = (items, term) => {
+    if (!term) return items;
+    
+    const lowerTerm = term.toLowerCase();
+    return items.filter(item => 
+      item.name.toLowerCase().includes(lowerTerm) || 
+      item.description.toLowerCase().includes(lowerTerm)
+    );
+  };
+
+  const handleResetFilters = () => {
+    // Clear search term from state
+    setSearchTerm('');
+    
+    // Remove q parameter from URL
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete('q');
+    setSearchParams(newSearchParams);
+    
+    // Reset filtered items to all items (no filters)
+    setFilteredItems(allItems);
+    
+    // Clear initial filters
+    setInitialFilters(null);
+  };
+
   // Load items from Firebase
   const loadItems = async () => {
     try {
@@ -78,7 +133,30 @@ function ItemsPage() {
         const transformedItems = result.items.map(item => transformItem(item))
         
         setAllItems(transformedItems)
-        setFilteredItems(transformedItems)
+        
+        // Parse URL parameters and set initial filters
+        const urlFilters = parseUrlParams();
+        if (urlFilters) {
+          setInitialFilters(urlFilters);
+          
+          // Apply URL filters immediately
+          let filtered = [...transformedItems];
+          
+          // Filter by search term (using stored searchTerm state)
+          filtered = applySearchFilter(filtered, searchTerm);
+          
+          // Filter by category
+          if (urlFilters.category) {
+            const categoryId = Categories.find(cat => 
+              cat.name === urlFilters.category
+            )?.id || 0;
+            filtered = filtered.filter(item => item.categoryId === categoryId);
+          }
+          
+          setFilteredItems(filtered);
+        } else {
+          setFilteredItems(transformedItems);
+        }
       } else {
         throw new Error(result.error || 'Failed to load items')
       }
@@ -97,8 +175,10 @@ function ItemsPage() {
     loadItems()
   }, [])
 
-  const handleFilterChange = (filteredItems) => {
-    setFilteredItems(filteredItems)
+   const handleFilterChange = (filteredFromContainer) => {
+    // Apply search filter on top of container filters
+    const filteredWithSearch = applySearchFilter(filteredFromContainer, searchTerm);
+    setFilteredItems(filteredWithSearch);
   }
 
   // Refresh items function
@@ -146,6 +226,9 @@ function ItemsPage() {
             allItems={allItems} 
             onFilterChange={handleFilterChange}
             onRefresh={handleRefreshItems}
+            initialFilters={initialFilters}
+            searchTerm={searchTerm}
+            onReset={handleResetFilters}
           />
         </div>
         <div className='flex-3 w-full'>
