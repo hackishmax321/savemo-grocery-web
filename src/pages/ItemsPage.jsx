@@ -7,7 +7,7 @@ import { sampleItems } from '../constants/SampleItems'
 import { useSearchParams } from 'react-router-dom'
 
 function ItemsPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filteredItems, setFilteredItems] = useState([])
   const [allItems, setAllItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -220,8 +220,8 @@ function ItemsPage() {
 
   return (
     <div className='w-full c-space section-spacing bg-primary py-5'>
-      <div className='flex relative'>
-        <div className='flex-1 w-full mt-3'>
+      <div className='flex flex-col lg:flex-row relative'>
+        <div className='flex-1 w-full mt-3 md:hidden lg:block'>
           <FilterContainer 
             allItems={allItems} 
             onFilterChange={handleFilterChange}

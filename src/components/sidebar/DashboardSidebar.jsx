@@ -50,8 +50,8 @@ function DashboardSidebar() {
     { id: 'NOTIFICATION', icon: FaBell, label: 'NOTIFICATION', badge: notifications.filter(n => !n.read).length, path: '/dashboard' },
     { id: 'PERSONAL_DETAILS', icon: FaUser, label: 'PERSONAL DETAILS', path: '/dashboard/profile' },
     { id: 'ITEMS_MANAGEMENT', icon: FaBox, label: 'ITEMS MANAGEMENT', path: '/dashboard/items-management' },
-    { id: 'ORDERS_MANAGEMENT', icon: FaShoppingCart, label: 'ORDERS MANAGEMENT', path: '/dashboard/profile' },
-    { id: 'PROMOTIONS_DISCOUNTS', icon: FaTag, label: 'PROMOTIONS', path: '/dashboard/profile' },
+    { id: 'ORDERS_MANAGEMENT', icon: FaShoppingCart, label: 'ORDERS MANAGEMENT', path: '/dashboard/orders-management' },
+    { id: 'PROMOTIONS_DISCOUNTS', icon: FaTag, label: 'PROMOTIONS', path: '/dashboard/promotions-management' },
     { id: 'SETTINGS', icon: FaCog, label: 'SETTINGS', path: '/dashboard/profile' },
   ];
 

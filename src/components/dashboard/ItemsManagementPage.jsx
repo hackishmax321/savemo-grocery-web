@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Categories, UnitTypes } from '../../constants/Categories';
 import groceryService from '../../services/Item.service';
+import ItemsAddModal from '../modals/ItemsAddModal';
 
 const ItemsManagementPage = () => {
   const [items, setItems] = useState([]);
@@ -16,28 +17,26 @@ const ItemsManagementPage = () => {
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
 
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    category: '',
-    subCategory: '',
-    description: '',
-    price: '',
-    quantity: '',
-    unit: 'piece',
-    brand: '',
-    barcode: '',
-    images: [],
-    tags: [],
-    nutritionalInfo: {},
-    isFeatured: false,
-    isOnSale: false,
-    discountPercentage: 0
-  });
-
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [formData, setFormData] = useState({
+        name: '',
+        category: '',
+        subCategory: '',
+        description: '',
+        price: '',
+        quantity: '',
+        unit: 'piece',
+        brand: '',
+        barcode: '',
+        images: [],
+        tags: [],
+        nutritionalInfo: {},
+        isFeatured: false,
+        isOnSale: false,
+        discountPercentage: 0
+  });
 
   // Load items on component mount
   useEffect(() => {
@@ -265,114 +264,6 @@ const ItemsManagementPage = () => {
     setErrors({});
   };
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
-  const handleCategoryChange = (e) => {
-    const category = e.target.value;
-    setFormData(prev => ({
-      ...prev,
-      category,
-      subCategory: '' // Reset subcategory when category changes
-    }));
-    setSelectedCategory(category);
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    }
-
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
-    }
-
-    if (!formData.price || isNaN(formData.price) || parseFloat(formData.price) <= 0) {
-      newErrors.price = 'Valid price is required';
-    }
-
-    if (formData.quantity && (isNaN(formData.quantity) || parseFloat(formData.quantity) < 0)) {
-      newErrors.quantity = 'Quantity must be a non-negative number';
-    }
-
-    if (formData.discountPercentage && 
-        (isNaN(formData.discountPercentage) || 
-         formData.discountPercentage < 0 || 
-         formData.discountPercentage > 100)) {
-      newErrors.discountPercentage = 'Discount must be between 0 and 100';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    try {
-      if (isEditMode && selectedItem) {
-        // Update existing item
-        const result = await groceryService.updateItem(selectedItem.docId, {
-          ...formData,
-          price: parseFloat(formData.price),
-          quantity: parseFloat(formData.quantity) || 0,
-          discountPercentage: parseFloat(formData.discountPercentage) || 0
-        });
-
-        if (result.success) {
-          setSuccessMessage('Item updated successfully!');
-          loadItems();
-          setTimeout(() => {
-            handleCloseModal();
-          }, 1500);
-        } else {
-          setErrors({ submit: result.error });
-        }
-      } else {
-        // Create new item
-        const result = await groceryService.createItem({
-          ...formData,
-          price: parseFloat(formData.price),
-          quantity: parseFloat(formData.quantity) || 0,
-          discountPercentage: parseFloat(formData.discountPercentage) || 0
-        });
-
-        if (result.success) {
-          setSuccessMessage('Item created successfully!');
-          loadItems();
-          setTimeout(() => {
-            handleCloseModal();
-          }, 1500);
-        } else {
-          setErrors({ submit: result.error });
-        }
-      }
-    } catch (error) {
-      console.error('Error saving item:', error);
-      setErrors({ submit: 'An error occurred. Please try again.' });
-    }
-  };
-
   const handleDelete = async (itemId) => {
     try {
       const result = await groceryService.deleteItem(itemId);
@@ -420,12 +311,6 @@ const ItemsManagementPage = () => {
     }
   };
 
-  const getSubcategories = () => {
-    if (!formData.category) return [];
-    const category = Categories.find(cat => cat.name === formData.category);
-    return category ? category.subcategories : [];
-  };
-
   const getStockStatusBadge = (status) => {
     switch(status) {
       case 'in_stock':
@@ -439,6 +324,33 @@ const ItemsManagementPage = () => {
       default:
         return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">Unknown</span>;
     }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+
+    // Clear error for this field
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handleCategoryChange = (e) => {
+    const category = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      category,
+      subCategory: '' // Reset subcategory when category changes
+    }));
+    setSelectedCategory(category);
   };
 
   const formatDate = (timestamp) => {
@@ -790,328 +702,20 @@ const ItemsManagementPage = () => {
 
             {/* Add/Edit Item Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/80 bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-white rounded-xl w-full max-w-4xl my-8">
-                    {/* Modal Header */}
-                    <div className="flex items-center justify-between p-6 border-b">
-                    <h2 className="text-2xl font-bold text-gray-800">
-                        {isEditMode ? 'Edit Item' : 'Add New Item'}
-                    </h2>
-                    <button
-                        onClick={handleCloseModal}
-                        className="p-2 hover:bg-gray-100 rounded-full"
-                    >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                    </div>
-
-                    {/* Success Message */}
-                    {successMessage && (
-                    <div className="m-6 p-4 bg-green-100 text-green-800 rounded-lg">
-                        {successMessage}
-                    </div>
-                    )}
-
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Left Column */}
-                        <div className="space-y-6">
-                        {/* Item Name */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Item Name *
-                            </label>
-                            <input
-                            type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            className={`w-full text-black/80 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.name ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                            placeholder="Enter item name"
-                            />
-                            {errors.name && (
-                            <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-                            )}
-                        </div>
-
-                        {/* Category & Subcategory */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Category *
-                            </label>
-                            <select
-                                name="category"
-                                value={formData.category}
-                                onChange={handleCategoryChange}
-                                className={`w-full text-black/80 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.category ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                            >
-                                <option value="">Select Category</option>
-                                {Categories.map(category => (
-                                <option key={category.id} value={category.name}>
-                                    {category.icon} {category.name}
-                                </option>
-                                ))}
-                            </select>
-                            {errors.category && (
-                                <p className="mt-1 text-sm text-red-600">{errors.category}</p>
-                            )}
-                            </div>
-
-                            <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Subcategory
-                            </label>
-                            <select
-                                name="subCategory"
-                                value={formData.subCategory}
-                                onChange={handleInputChange}
-                                className="w-full text-black/80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                disabled={!formData.category}
-                            >
-                                <option value="">Select Subcategory</option>
-                                {getSubcategories().map(sub => (
-                                <option key={sub} value={sub}>{sub}</option>
-                                ))}
-                            </select>
-                            </div>
-                        </div>
-
-                        {/* Description */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Description
-                            </label>
-                            <textarea
-                            name="description"
-                            value={formData.description}
-                            onChange={handleInputChange}
-                            rows="3"
-                            className="w-full text-black/80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Enter item description"
-                            />
-                        </div>
-
-                        {/* Price & Quantity */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Price *
-                            </label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-2.5 text-gray-500">Rs.</span>
-                                <input
-                                type="number"
-                                name="price"
-                                value={formData.price}
-                                onChange={handleInputChange}
-                                step="0.01"
-                                min="0"
-                                className={`w-full text-black/80 pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    errors.price ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                                placeholder="0.00"
-                                />
-                            </div>
-                            {errors.price && (
-                                <p className="mt-1 text-sm text-red-600">{errors.price}</p>
-                            )}
-                            </div>
-
-                            <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Quantity
-                            </label>
-                            <div className="flex gap-2">
-                                <input
-                                type="number"
-                                name="quantity"
-                                value={formData.quantity}
-                                onChange={handleInputChange}
-                                min="0"
-                                step="0.01"
-                                className={`w-full text-black/80 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    errors.quantity ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                                placeholder="0"
-                                />
-                                <select
-                                name="unit"
-                                value={formData.unit}
-                                onChange={handleInputChange}
-                                className="w-32 text-black/80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                {UnitTypes.map(unit => (
-                                    <option key={unit.id} value={unit.id}>
-                                    {unit.symbol}
-                                    </option>
-                                ))}
-                                </select>
-                            </div>
-                            {errors.quantity && (
-                                <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>
-                            )}
-                            </div>
-                        </div>
-                        </div>
-
-                        {/* Right Column */}
-                        <div className="space-y-6">
-                        {/* Brand & Barcode */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Brand
-                            </label>
-                            <input
-                                type="text"
-                                name="brand"
-                                value={formData.brand}
-                                onChange={handleInputChange}
-                                className="w-full text-black/80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Enter brand"
-                            />
-                            </div>
-
-                            <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Barcode
-                            </label>
-                            <input
-                                type="text"
-                                name="barcode"
-                                value={formData.barcode}
-                                onChange={handleInputChange}
-                                className="w-full text-black/80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Enter barcode"
-                            />
-                            </div>
-                        </div>
-
-                        {/* Discount & Sale */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Discount %
-                            </label>
-                            <input
-                                type="number"
-                                name="discountPercentage"
-                                value={formData.discountPercentage}
-                                onChange={handleInputChange}
-                                min="0"
-                                max="100"
-                                step="1"
-                                className={`w-full text-black/80 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                errors.discountPercentage ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                                placeholder="0"
-                            />
-                            {errors.discountPercentage && (
-                                <p className="mt-1 text-sm text-red-600">{errors.discountPercentage}</p>
-                            )}
-                            </div>
-
-                            <div className="flex items-end space-x-4">
-                            <div className="flex items-center">
-                                <input
-                                type="checkbox"
-                                id="isFeatured"
-                                name="isFeatured"
-                                checked={formData.isFeatured}
-                                onChange={handleInputChange}
-                                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                                />
-                                <label htmlFor="isFeatured" className="ml-2 text-sm text-gray-700">
-                                Featured Item
-                                </label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                type="checkbox"
-                                id="isOnSale"
-                                name="isOnSale"
-                                checked={formData.isOnSale}
-                                onChange={handleInputChange}
-                                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                                />
-                                <label htmlFor="isOnSale" className="ml-2 text-sm text-gray-700">
-                                On Sale
-                                </label>
-                            </div>
-                            </div>
-                        </div>
-
-                        {/* Tags */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Tags (comma separated)
-                            </label>
-                            <input
-                            type="text"
-                            name="tags"
-                            value={formData.tags.join(', ')}
-                            onChange={(e) => setFormData(prev => ({
-                                ...prev,
-                                tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag)
-                            }))}
-                            className="w-full text-black/80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="organic, fresh, local, etc."
-                            />
-                        </div>
-
-                        {/* Images URL */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Image URLs (one per line)
-                            </label>
-                            <textarea
-                            value={formData.images.join('\n')}
-                            onChange={(e) => setFormData(prev => ({
-                                ...prev,
-                                images: e.target.value.split('\n').filter(url => url.trim())
-                            }))}
-                            rows="3"
-                            className="w-full text-black/80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="https://example.com/image1.jpg"
-                            />
-                        </div>
-                        </div>
-                    </div>
-
-                    {/* Submit Error */}
-                    {errors.submit && (
-                        <div className="mt-4 p-3 bg-red-100 text-red-800 rounded-lg">
-                        {errors.submit}
-                        </div>
-                    )}
-
-                    {/* Form Actions */}
-                    <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
-                        <button
-                        type="button"
-                        onClick={handleCloseModal}
-                        className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
-                        >
-                        Cancel
-                        </button>
-                        <button
-                        type="submit"
-                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                        >
-                        {isEditMode ? 'Update Item' : 'Create Item'}
-                        </button>
-                    </div>
-                    </form>
-                </div>
-                </div>
+                <ItemsAddModal 
+                  formData={formData} 
+                  isEditMode={isEditMode} 
+                  handleCloseModal={handleCloseModal} 
+                  successMessage={successMessage}
+                  errors={errors}
+                  handleInputChange={handleInputChange}
+                  handleCategoryChange={handleCategoryChange}
+                  setFormData={setFormData}
+                  setErrors={setErrors}
+                  setSuccessMessage={setSuccessMessage}
+                  loadItems={loadItems}
+                  selectedItem={selectedItem}
+                />
             )}
         </div>
     </div>

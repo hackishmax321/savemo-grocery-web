@@ -32,6 +32,7 @@ function SearchBar() {
         
         // Navigate to products page with search params
         navigate(`/products?${searchParams.toString()}`);
+        window.location.reload();
     };
 
     const handleCategorySelect = (catName) => {

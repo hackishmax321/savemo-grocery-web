@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { routes } from '../../constants/Routes'
 import { Link } from 'react-router-dom'
-import { FaFacebook, FaInstagram, FaLinkedin, FaTwitter } from 'react-icons/fa'
+import { FaFacebook, FaInstagram, FaLinkedin, FaTwitter, FaCcVisa, FaCcMastercard, FaCcAmex } from 'react-icons/fa'
 import contactService from '../../services/Contact.service';
 
 function Footer() {
@@ -24,7 +24,7 @@ function Footer() {
       email: footerForm.email,
       phone: "", // Empty as not required
       subject: "Newsletter/Contact from Footer", // Fixed subject
-      message: footerForm.message || `Newsletter subscription request from ${footerForm.email}`
+      message: `Newsletter subscription request from ${footerForm.email}`
     };
 
     try {
@@ -68,12 +68,12 @@ function Footer() {
             {/* FIGURE SECTION - Add your logo/image here */}
             <figure className="mb-6">
               <img 
-                src="/logo/logo-main.png" // Replace with your logo
+                src="/logo/logo-main2.png" 
                 alt="ShopSphere Logo" 
                 className="h-25 w-auto"
               />
               <figcaption className="text-center md:text-left text-sm text-white/80 mt-2">
-                Save more & Get more
+                 Buy More! Save More!
               </figcaption>
             </figure>
             
@@ -82,6 +82,18 @@ function Footer() {
             <p className="text-white/90 mb-4 text-center md:text-left">
               Subscribe to our newsletter for exclusive deals and updates.
             </p>
+
+            <div className="mt-1 mb-2 flex justify-center md:justify-start items-center gap-4">
+                <p className="text-white/80 text-sm mb-2 text-center md:text-left">
+                  We Accept
+                </p>
+
+                <div className="flex justify-center md:justify-start items-center gap-4">
+                  <FaCcVisa className="text-white text-3xl hover:scale-110 transition-transform duration-200" />
+                  <FaCcMastercard className="text-white text-3xl hover:scale-110 transition-transform duration-200" />
+                  <FaCcAmex className="text-white text-3xl hover:scale-110 transition-transform duration-200" />
+                </div>
+            </div>
             
             <form className="w-full" onSubmit={handleFooterSubmit}>
               {submitSuccess && (
@@ -95,7 +107,7 @@ function Footer() {
                   {submitError}
                 </div>
               )}
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-row lg:flex-col xl:flex-row gap-2">
                 <input
                   type="email"
                   name="email"
@@ -114,7 +126,7 @@ function Footer() {
                   {isSubmitting ? 'Sending...' : 'Subscribe'}
                 </button>
               </div>
-              <div className="mt-3">
+              {/* <div className="mt-3">
                 <textarea 
                   name="message"
                   value={footerForm.message}
@@ -123,7 +135,7 @@ function Footer() {
                   placeholder="Your messages"
                   className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/20 resize-y"
                 />
-              </div>
+              </div> */}
             </form>
             
             
@@ -182,7 +194,7 @@ function Footer() {
             
             {/* Payment Methods FIGURE */}
             <div className="flex space-x-4">
-              {['twitter', 'facebook', 'instagram', 'linkedin'].map((social) => (
+              {['facebook', 'instagram'].map((social) => (
                 <a 
                   key={social}
                   href="#" 
@@ -190,10 +202,8 @@ function Footer() {
                   aria-label={`Follow us on ${social}`}
                 >
                   <span className="text-lg">
-                    {social === 'twitter' && <FaTwitter/>}
                     {social === 'facebook' && <FaFacebook/>}
                     {social === 'instagram' && <FaInstagram/>}
-                    {social === 'linkedin' && <FaLinkedin/>}
                   </span>
                 </a>
               ))}

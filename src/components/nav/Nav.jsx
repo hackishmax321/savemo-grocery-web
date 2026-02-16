@@ -158,16 +158,16 @@ function Nav({setShowAuth}) {
                 </Link>
               </li>
               <li>
-                <Link 
-                  to="/categories" 
+                <a 
+                  href="https://packstore.lk/" 
                   className="flex items-center px-4 py-3 text-font-primary-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all duration-200 group"
                   onClick={() => setIsMobileNav(false)}
                 >
                   <svg className="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  CATEGORIES
-                </Link>
+                  PACK STORE
+                </a>
               </li>
               
             </ul>
@@ -178,7 +178,7 @@ function Nav({setShowAuth}) {
         {!isMobile&&<div className='flex items-center space-x-6'>
           <ul className='flex gap-6 mr-4'>
             <li><Link to={'/products'} className='text-font-primary-700 hover:text-blue-600 font-medium transition-colors'>STORE</Link></li>
-            <li><Link to={'/categories'} className='text-font-primary-700 hover:text-blue-600 font-medium transition-colors'>CATEGORIES</Link></li>
+            <li><a href={'https://packstore.lk/'} className='text-font-primary-700 hover:text-blue-600 font-medium transition-colors'>PACK STORE</a></li>
             
           </ul>
         </div>}
@@ -354,7 +354,7 @@ function Nav({setShowAuth}) {
                         My Profile
                       </Link>
                       <Link 
-                        to="/orders" 
+                        to="/dashboard/orders-management" 
                         className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                         onClick={() => setIsOpen(false)}
                       >

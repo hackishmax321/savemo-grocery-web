@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { Notify } from 'notiflix';
 import { 
   FaUser, 
@@ -20,6 +21,7 @@ import {
   MdCheckCircle
 } from 'react-icons/md';
 import userService from '../../services/User.service';
+import { auth, provider } from '../../db/Firebase.config'
 
 // Notiflix configuration
 Notify.init({
@@ -36,6 +38,8 @@ const AuthModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    // console.log(sessionStorage.getItem('currentUser'))
   
   // Login form state
   const [loginForm, setLoginForm] = useState({
@@ -57,6 +61,81 @@ const AuthModal = ({ isOpen, onClose }) => {
       postalCode: '',
     },
   });
+
+  useEffect(() => {
+  const handleRedirectResult = async () => {
+    try {
+      const result = await getRedirectResult(auth);
+
+      if (!result) return;
+
+      setLoading(true);
+
+      const user = result.user;
+      const email = user.email;
+      const displayName = user.displayName;
+      const photoURL = user.photoURL;
+
+      // Check if user exists
+      const userExists = await userService.checkUserExists(email);
+
+      let finalUser;
+
+      if (userExists) {
+        const loginResult = await userService.loginWithGoogle(email);
+
+        if (!loginResult.success) {
+          Notify.failure("Failed to login with Google");
+          setLoading(false);
+          return;
+        }
+
+        finalUser = loginResult.user;
+        Notify.success("Google login successful!");
+      } else {
+        const registerResult = await userService.registerWithGoogle({
+          email,
+          displayName,
+          photoURL,
+          emailVerified: user.emailVerified,
+        });
+
+        if (!registerResult.success) {
+          Notify.failure("Failed to create account with Google");
+          setLoading(false);
+          return;
+        }
+
+        finalUser = registerResult.user;
+        Notify.success("Account created successfully with Google!");
+      }
+
+      // Store session
+      sessionStorage.setItem("currentUser", JSON.stringify(finalUser));
+      sessionStorage.setItem("isAuthenticated", "true");
+
+      setTimeout(() => {
+        onClose();
+        window.location.href = "/";
+      }, 1200);
+
+    } catch (error) {
+      console.error("Redirect result error:", error);
+
+      if (error.code === "auth/account-exists-with-different-credential") {
+        Notify.failure("Account exists with different sign-in method");
+      } else {
+        Notify.failure("Google authentication failed");
+      }
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  handleRedirectResult();
+}, [onClose]);
+
 
   // Reset forms when modal opens/closes
   useEffect(() => {
@@ -283,6 +362,25 @@ const AuthModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+
+      provider.setCustomParameters({
+        prompt: "select_account",
+      });
+
+      // Use redirect (NO popup)
+      await signInWithRedirect(auth, provider);
+
+    } catch (error) {
+      console.error("Google redirect error:", error);
+      Notify.failure("Google login failed. Please try again.");
+      setLoading(false);
+    }
+  };
+
+
   // Modal variants for animation
   const modalVariants = {
     hidden: { 
@@ -416,7 +514,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                       <FaSignInAlt className="w-8 h-8 text-blue-600" />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900">Sign In to Your Account</h3>
-                    <p className="text-gray-600 mt-2">Enter your credentials to continue</p>
+                    <p className="text-gray-600 mt-2">Enter your user credentials</p>
                   </div>
 
                   {/* Login form */}
@@ -522,24 +620,25 @@ const AuthModal = ({ isOpen, onClose }) => {
                   </div>
 
                   {/* Social login buttons */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
+                  <div className="flex justify-evenly">
+                    {/* <button
                       type="button"
                       disabled={loading}
-                      className="py-2.5 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center disabled:opacity-50"
+                      className="w-12 h-12 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors flex items-center justify-center disabled:opacity-50"
                     >
-                      <FaGithub className="w-5 h-5 mr-2 text-gray-700" />
-                      GitHub
-                    </button>
+                      <FaGithub className="w-5 h-5 text-gray-700" />
+                    </button> */}
+
                     <button
                       type="button"
+                      onClick={handleGoogleLogin}
                       disabled={loading}
-                      className="py-2.5 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center disabled:opacity-50"
+                      className="w-12 h-12 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors flex items-center justify-center disabled:opacity-50"
                     >
-                      <FaGoogle className="w-5 h-5 mr-2 text-red-600" />
-                      Google
+                      <FaGoogle className="w-5 h-5 text-red-600" />
                     </button>
                   </div>
+
 
                   {/* Switch to register */}
                   <div className="text-center pt-4">

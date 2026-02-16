@@ -17,6 +17,9 @@ import ItemsManagementPage from './components/dashboard/ItemsManagementPage'
 import ReturnPolicyPage from './pages/ReturnPolicyPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsConditionsPage from './pages/TermsConditionsPage'
+import ProductDetailsPage from './pages/ProductDetailsPage'
+import PromotionsManagementPage from './components/dashboard/PromotionManagementPage'
+import OrdersManagementPage from './components/dashboard/OrdersManagementPage'
 
 function App() {
   const [showAuth, setShowAuth] = useState(false)
@@ -33,6 +36,7 @@ function App() {
       <Routes>
         <Route path='/' element={<OpenPage />} />
         <Route path='/products' element={<ItemsPage />} />
+        <Route path='/products/:id' element={<ProductDetailsPage />} />
         <Route path='/about-us' element={<AboutUsPage />} />
         <Route path='/contact-us' element={<ContactUsPage />} />
         <Route path='/view-cart' element={<ViewCartPage />} />
@@ -45,6 +49,8 @@ function App() {
           <Route index element={<DashboardHomePage />} />
           <Route path='profile' element={<ProfilePage />} />
           <Route path='items-management' element={<ItemsManagementPage />} />
+          <Route path='promotions-management' element={<PromotionsManagementPage />} />
+          <Route path='orders-management' element={<OrdersManagementPage />} />
         </Route>
       </Routes>
 

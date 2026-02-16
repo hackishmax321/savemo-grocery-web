@@ -280,15 +280,15 @@ function PrivacyPolicyPage() {
               <div className='space-y-2'>
                 <div className='flex items-center gap-3 text-gray-700'>
                   <FaPhone className="text-sm text-gray-500" />
-                  <span>+94 11 234 5678</span>
+                  <span>+94 777 258 358</span>
                 </div>
                 <div className='flex items-center gap-3 text-gray-700'>
                   <FaEnvelope className="text-sm text-gray-500" />
-                  <span>support@savemo.lk</span>
+                  <span>savemoshop@gmail.com</span>
                 </div>
                 <div className='flex items-center gap-3 text-gray-700'>
                   <FaMapMarkerAlt className="text-sm text-gray-500" />
-                  <span>123 Galle Road, Wattala</span>
+                  <span>No.69, Temple Avenue, Colombo 10, Sri Lanka</span>
                 </div>
               </div>
               

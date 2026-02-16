@@ -17,7 +17,8 @@ function ItemsContainer({ items = [] }) {
   }
 
   return (
-    <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4 md:p-6'>
+    <div className='grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4 md:p-6 '>
+      {/* lg:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] */}
       {items.map((item) => (
         <ItemCard key={item.id} item={item} />
       ))}

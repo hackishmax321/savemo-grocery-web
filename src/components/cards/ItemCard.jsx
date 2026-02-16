@@ -1,15 +1,17 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useCart } from '../../providers/CartProvide' 
+import { useNavigate } from 'react-router-dom';
 
 function ItemCard({ item }) {
-  const { name, description, price, image, categoryId, rating, inStock } = item
+  const navigate = useNavigate();
+  const { name, description, price, image, categoryId, rating, inStock, id } = item
   const [isWishlisted, setIsWishlisted] = useState(false)
   
   // Use the cart context
   const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useCart()
 
   // Initialize wishlist state
-  useState(() => {
+  useEffect(() => { 
     setIsWishlisted(isInWishlist(item.id))
   }, [item.id, isInWishlist])
 
@@ -35,9 +37,8 @@ function ItemCard({ item }) {
   }
 
   const handleQuickView = () => {
-    // Implement quick view modal
-    console.log(`Quick view: ${name}`)
-  }
+    navigate(`/products/${item.id || item.docId}`);
+  };
 
   const getCategoryDisplayName = (cat) => {
     const categories = {
@@ -91,7 +92,7 @@ function ItemCard({ item }) {
         {/* Price and Action Button */}
         <div className='flex justify-between items-center'>
           <div>
-            <span className='font-bold text-xl text-gray-900'>Rs.{price.toFixed(2)}</span>
+            <span className='font-bold text-xl text-gray-900 mr-1'>Rs.{price.toFixed(2)}</span>
           </div>
           <button 
             onClick={handleAddToCart} // Updated to use handleAddToCart

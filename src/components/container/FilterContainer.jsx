@@ -148,7 +148,7 @@ function FilterContainer({ allItems = [], onFilterChange, initialFilters = null,
   }
 
   return (
-    <div className='bg-white border border-gray-200 rounded-xl p-6 shadow-lg w-full max-w-xs sticky top-6'>
+    <div className=' bg-white border border-gray-200 rounded-xl p-6 shadow-lg w-full max-w-xs sticky top-6'>
       {searchTerm && (
         <div className='mb-4 p-2 bg-blue-50 rounded-lg'>
           <div className='flex items-center justify-between'>

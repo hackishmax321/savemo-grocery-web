@@ -97,7 +97,6 @@ function ContactUsPage() {
   const socialMedia = [
     { icon: <FaFacebook />, name: 'Facebook', url: '#', color: 'bg-blue-600' },
     { icon: <FaInstagram />, name: 'Instagram', url: '#', color: 'bg-pink-600' },
-    { icon: <FaTwitter />, name: 'Twitter', url: '#', color: 'bg-sky-500' },
   ];
 
   const frequentlyAsked = [
@@ -323,7 +322,7 @@ function ContactUsPage() {
                 Follow us on social media for the latest updates, promotions, and healthy living tips.
               </p>
               <div className='flex gap-4'>
-                {['twitter', 'facebook', 'instagram', 'linkedin'].map((social) => (
+                {['facebook', 'instagram'].map((social) => (
                     <a 
                       key={social}
                       href="#" 
@@ -331,10 +330,8 @@ function ContactUsPage() {
                       aria-label={`Follow us on ${social}`}
                     >
                       <span className="text-lg">
-                        {social === 'twitter' && <FaTwitter/>}
                         {social === 'facebook' && <FaFacebook/>}
                         {social === 'instagram' && <FaInstagram/>}
-                        {social === 'linkedin' && <FaLinkedin/>}
                       </span>
                     </a>
                   ))}
