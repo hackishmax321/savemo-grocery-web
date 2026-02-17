@@ -3,15 +3,15 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
-// Your web app's Firebase configuration
+// Firebase configuration using environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyDFdTwpg8c0BqyqFCtrTzAuJfX5yfu3FCA",
-  authDomain: "vehicle-access-app.firebaseapp.com",
-  projectId: "vehicle-access-app",
-  storageBucket: "vehicle-access-app.firebasestorage.app",
-  messagingSenderId: "351457007443",
-  appId: "1:351457007443:web:e750e11193fed7391fb3a6",
-  measurementId: "G-3WRK6184ZP"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -21,7 +21,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
-const provider = new GoogleAuthProvider()
+const provider = new GoogleAuthProvider();
 
 export { db, auth, storage, provider };
 export default app;

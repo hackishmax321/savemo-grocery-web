@@ -82,18 +82,6 @@ function Footer() {
             <p className="text-white/90 mb-4 text-center md:text-left">
               Subscribe to our newsletter for exclusive deals and updates.
             </p>
-
-            <div className="mt-1 mb-2 flex justify-center md:justify-start items-center gap-4">
-                <p className="text-white/80 text-sm mb-2 text-center md:text-left">
-                  We Accept
-                </p>
-
-                <div className="flex justify-center md:justify-start items-center gap-4">
-                  <FaCcVisa className="text-white text-3xl hover:scale-110 transition-transform duration-200" />
-                  <FaCcMastercard className="text-white text-3xl hover:scale-110 transition-transform duration-200" />
-                  <FaCcAmex className="text-white text-3xl hover:scale-110 transition-transform duration-200" />
-                </div>
-            </div>
             
             <form className="w-full" onSubmit={handleFooterSubmit}>
               {submitSuccess && (
@@ -137,6 +125,18 @@ function Footer() {
                 />
               </div> */}
             </form>
+
+            {/* <div className="mt-1 mb-2 flex justify-center md:justify-start items-center gap-4">
+                <p className="text-white/80 text-sm mb-2 text-center md:text-left">
+                  We Accept
+                </p>
+
+                <div className="flex justify-center md:justify-start items-center gap-4">
+                  <FaCcVisa className="text-white text-3xl hover:scale-110 transition-transform duration-200" />
+                  <FaCcMastercard className="text-white text-3xl hover:scale-110 transition-transform duration-200" />
+                  <FaCcAmex className="text-white text-3xl hover:scale-110 transition-transform duration-200" />
+                </div>
+            </div> */}
             
             
           </div>
