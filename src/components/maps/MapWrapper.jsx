@@ -3,7 +3,7 @@ import { LoadScript } from '@react-google-maps/api';
 import MapComponent from './MapComponent';
 
 const MapWrapper = () => {
-  const apiKey = 'AIzaSyDTJjnuqF0J18Uu_Ft2TA5R13WsyyDbo4U';
+  const apiKey = import.meta.env.VITE_GMAP_API_KEY;
 
   if (!apiKey) {
     return (

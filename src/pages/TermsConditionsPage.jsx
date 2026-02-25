@@ -363,7 +363,7 @@ function TermsConditionsPage() {
                 </div>
               </div>
               <div className='flex gap-4 md:flex-shrink-0'>
-                <a href="/privacy" className='px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium'>
+                <a href="/policy" className='px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium'>
                   Privacy Policy
                 </a>
                 <a href="/contact-us" className='px-4 py-2 bg-font-secondary text-white rounded-lg hover:bg-font-alternate transition-colors text-sm font-medium'>

@@ -89,6 +89,20 @@ name: "Miscellaneous",
 details: "Pet supplies and other various items",
 icon: "📦",
 subcategories: ["Dog Food", "Cat Food", "Pet Treats", "Litter", "Pet Care", "Party Supplies", "Gift Wrap", "Candles"]
+},
+{
+id: 14,
+name: "Ramadan Essentials",
+details: "Special items for Ramadan - Dates, sweets, and traditional foods",
+icon: "🌙",
+subcategories: ["Dates", "Ramadan Sweets", "Traditional Snacks", "Prayer Mats", "Quran & Books", "Oil & Ghee", "Rose Water", "Specialty Spices", "Ready-to-eat Meals"]
+},
+{
+id: 15,
+name: "Packstore",
+details: "Wrapping supplies, storage containers, and grocery packs",
+icon: "📦",
+subcategories: ["Plastic Wraps", "Aluminum Foil", "Storage Containers", "Ziplock Bags", "Parchment Paper", "Freezer Bags", "Food Storage Boxes", "Vacuum Sealer Bags", "Grocery Shopping Bags", "Baking Cups & Liners"]
 }
 ];
 

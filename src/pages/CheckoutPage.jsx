@@ -16,20 +16,40 @@ import {
 } from 'react-icons/ai';
 import { 
   FaCcVisa, 
-  FaCcMastercard, 
-  FaCcPaypal, 
-  FaCcAmazonPay 
+  FaCcMastercard 
 } from 'react-icons/fa';
 import { RiSecurePaymentLine } from 'react-icons/ri';
+import orderService from '../services/Order.service';
+import paymentService from '../services/Payment.service';
+
+// Add PayHere script to head
+const loadPayHereScript = () => {
+  return new Promise((resolve, reject) => {
+    if (window.payhere) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://www.payhere.lk/lib/payhere.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load PayHere script'));
+    document.head.appendChild(script);
+  });
+};
 
 function CheckoutPage() {
   const { cart, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   
   const [step, setStep] = useState(1); // 1: Address, 2: Payment, 3: Confirmation
-  const [paymentMethod, setPaymentMethod] = useState('credit-card');
+  const [paymentMethod, setPaymentMethod] = useState('payhere'); // Default to payhere
   const [saveAddress, setSaveAddress] = useState(true);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+  const [paymentError, setPaymentError] = useState(null);
+  const [orderRResult, setOrderRResult] = useState(null);
   
   // Address form state
   const [address, setAddress] = useState({
@@ -84,31 +104,287 @@ function CheckoutPage() {
     setStep(2);
   };
 
+  // Initialize PayHere payment
+  const initializePayHerePayment = async () => {
+    try {
+      setLoading(true);
+      setPaymentError(null);
+
+      // First check if backend is reachable
+      const isBackendHealthy = await paymentService.verifyBackendConnection();
+      if (!isBackendHealthy) {
+        throw new Error('Payment gateway is currently unavailable. Please try again later.');
+      }
+
+      // Load PayHere script if not already loaded
+      await loadPayHereScript();
+
+      // Initialize payment with backend
+      console.log('Initializing payment with data:', {
+        amount: total,
+        firstName: address.fullName.split(' ')[0],
+        lastName: address.fullName.split(' ').slice(1).join(' ') || 'Customer',
+        email: address.email,
+        phone: address.phone,
+        address: address.addressLine1,
+        city: address.city
+      });
+
+      const paymentInit = await paymentService.initializePayment({
+        amount: total,
+        firstName: address.fullName.split(' ')[0],
+        lastName: address.fullName.split(' ').slice(1).join(' ') || 'Customer',
+        email: address.email,
+        phone: address.phone,
+        address: address.addressLine1,
+        city: address.city,
+        country: address.country
+      });
+
+      console.log('Payment initialized:', paymentInit);
+
+      if (!paymentInit.success) {
+        throw new Error('Failed to initialize payment');
+      }
+
+      // Prepare order data
+      const orderData = {
+        items: cart.map(item => ({
+          docId: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image,
+          category: item.category,
+          subCategory: item.subCategory,
+          brand: item.brand,
+          discountedPrice: item.discountedPrice || item.price,
+          totalPrice: (item.discountedPrice || item.price) * item.quantity
+        })),
+        total: total,
+        subtotal: subtotal,
+        tax: tax,
+        deliveryFee: shippingFee,
+        promoCode: null,
+        discountAmount: 0,
+        paidAmount: total,
+        paymentMethod: 'payhere',
+        paymentStatus: 'pending',
+        orderStatus: 'pending_payment',
+        shippingInfo: {
+          address: address.addressLine1,
+          address2: address.addressLine2,
+          city: address.city,
+          state: address.province,
+          zipCode: address.postalCode,
+          country: address.country,
+          phone: address.phone,
+          email: address.email
+        },
+        customerId: localStorage.getItem('userId') || null,
+        customerEmail: address.email,
+        customerName: address.fullName,
+        customerPhone: address.phone,
+        storeId: 'main_store',
+        createdBy: localStorage.getItem('userId') || 'guest',
+        orderReference: paymentInit.orderId
+      };
+
+      // Create order in pending state
+      const orderResult = await orderService.createOrder(orderData);
+      
+      console.log('Order created:', orderResult);
+      setOrderRResult(orderResult)
+
+      if (!orderResult.success) {
+        throw new Error(orderResult.error || 'Failed to create order');
+      }
+
+      setOrderId(orderResult.order.id);
+
+      // Set up PayHere event handlers
+      window.payhere.onCompleted = async function onCompleted(transactionId) {
+        console.log('✅ Payment completed. Transaction ID:', transactionId);
+        
+        try {
+          setLoading(true);
+          
+          // Wait a moment for the notification webhook to process
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Verify payment with backend
+          console.log('Verifying payment for order:', paymentInit.orderId);
+          const verification = await paymentService.verifyPayment(paymentInit.orderId);
+          
+          console.log('Payment verification result:', verification);
+          
+          if (verification.success && verification.status === 'completed') {
+            // Update order status to processing
+            await orderService.updateOrderStatus(orderResult.order.id, 'processing', 'Payment completed successfully');
+            
+            // Clear cart and move to confirmation
+            clearCart();
+            setStep(3);
+          } else {
+            // Check status again after a delay
+            setTimeout(async () => {
+              const retryVerification = await paymentService.verifyPayment(paymentInit.orderId);
+              if (retryVerification.success && retryVerification.status === 'completed') {
+                await orderService.updateOrderStatus(orderResult.order.id, 'processing', 'Payment completed successfully');
+                clearCart();
+                setStep(3);
+              } else {
+                setPaymentError('Payment verification failed. Please check your orders page for status.');
+              }
+              setLoading(false);
+            }, 5000);
+          }
+        } catch (error) {
+          console.error('Payment verification error:', error);
+          setPaymentError('Payment verification failed. Please check your orders page for status.');
+          setLoading(false);
+        }
+      };
+
+      window.payhere.onDismissed = function onDismissed() {
+        console.log('❌ Payment dismissed by user');
+        setPaymentError('Payment was cancelled');
+        setLoading(false);
+      };
+
+      window.payhere.onError = function onError(error) {
+        console.log('❌ Payment error:', error);
+        
+        // Handle specific PayHere errors
+        if (error.includes('declined') || error.includes('insufficient')) {
+          setPaymentError('Transaction declined. Please check your card details or try another payment method.');
+        } else if (error.includes('timeout')) {
+          setPaymentError('Payment timeout. Please try again.');
+        } else {
+          setPaymentError('Payment failed: ' + error);
+        }
+        
+        setLoading(false);
+      };
+
+      // Log payment data before starting
+      console.log('Starting PayHere payment with data:', paymentInit.paymentData);
+
+      // Start payment
+      window.payhere.startPayment(paymentInit.paymentData);
+
+    } catch (error) {
+      console.error('❌ Payment initialization error:', error);
+      setPaymentError(error.message || 'Failed to initialize payment. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const testPayHereConfig = async () => {
+    try {
+      const result = await paymentService.checkHealth();
+      console.log('Health check:', result);
+      
+      if (!result.success) {
+        alert('Payment gateway backend is not reachable. Please check your connection.');
+      } else {
+        alert('Payment gateway is reachable!');
+      }
+    } catch (error) {
+      console.error('Health check failed:', error);
+      alert('Failed to connect to payment gateway');
+    }
+  };
+
+  const handleCashOnDeliverySubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      setPaymentError(null);
+
+      // Prepare order data for COD
+      const orderData = {
+        items: cart.map(item => ({
+          docId: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image,
+          category: item.category,
+          subCategory: item.subCategory,
+          brand: item.brand,
+          discountedPrice: item.discountedPrice || item.price,
+          totalPrice: (item.discountedPrice || item.price) * item.quantity
+        })),
+        total: total,
+        subtotal: subtotal,
+        tax: tax,
+        deliveryFee: shippingFee,
+        promoCode: null,
+        discountAmount: 0,
+        paidAmount: 0, // Not paid yet for COD
+        paymentMethod: 'cod',
+        paymentStatus: 'pending',
+        orderStatus: 'processing',
+        shippingInfo: {
+          address: address.addressLine1,
+          address2: address.addressLine2,
+          city: address.city,
+          state: address.province,
+          zipCode: address.postalCode,
+          country: address.country,
+          phone: address.phone,
+          email: address.email
+        },
+        customerId: localStorage.getItem('userId') || null,
+        customerEmail: address.email,
+        customerName: address.fullName,
+        customerPhone: address.phone,
+        storeId: 'main_store',
+        createdBy: localStorage.getItem('userId') || 'guest'
+      };
+
+      // Create order
+      const orderResult = await orderService.createOrder(orderData);
+      
+      if (!orderResult.success) {
+        throw new Error(orderResult.error);
+      }
+
+      setOrderId(orderResult.order.id);
+
+      // Clear cart and move to confirmation
+      clearCart();
+      setStep(3);
+
+    } catch (error) {
+      console.error('Order creation error:', error);
+      setPaymentError(error.message || 'Failed to create order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePaymentSubmit = (e) => {
     e.preventDefault();
+    
     if (!agreeTerms) {
       alert('Please agree to the terms and conditions');
       return;
     }
     
-    if (paymentMethod === 'credit-card') {
-      if (!payment.cardNumber || !payment.cardName || !payment.expiryDate || !payment.cvv) {
-        alert('Please fill in all payment details');
-        return;
-      }
+    if (paymentMethod === 'payhere') {
+      initializePayHerePayment();
+    } else if (paymentMethod === 'cod') {
+      handleCashOnDeliverySubmit(e);
     }
-    
-    // Process order (in real app, this would be an API call)
-    console.log('Processing order...', { address, payment, cart });
-    
-    // Clear cart and move to confirmation
-    clearCart();
-    setStep(3);
   };
 
   const provinces = [
     'Western Province', 'Central Province', 'Southern Province', 'Northern Province',
-    'Eastern Province', 'North Western Province', 'North Central Province', 'Uva Province', 'Sabaragamuwa Province'
+    'Eastern Province', 'North Western Province', 'North Central Province', 
+    'Uva Province', 'Sabaragamuwa Province'
   ];
 
   if (cart.length === 0 && step !== 3) {
@@ -214,7 +490,7 @@ function CheckoutPage() {
                           name='fullName'
                           value={address.fullName}
                           onChange={handleAddressChange}
-                          className='w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
+                          className='w-full pl-10 pr-4 py-3 border text-black/80 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
                           placeholder='John Doe'
                           required
                         />
@@ -230,7 +506,7 @@ function CheckoutPage() {
                         name='email'
                         value={address.email}
                         onChange={handleAddressChange}
-                        className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
+                        className='w-full px-4 py-3 border text-black/80 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
                         placeholder='john@example.com'
                         required
                       />
@@ -247,7 +523,7 @@ function CheckoutPage() {
                           name='phone'
                           value={address.phone}
                           onChange={handleAddressChange}
-                          className='w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
+                          className='w-full pl-10 pr-4 py-3 border text-black/80 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
                           placeholder='071 234 5678'
                           required
                         />
@@ -262,12 +538,12 @@ function CheckoutPage() {
                         name='province'
                         value={address.province}
                         onChange={handleAddressChange}
-                        className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
+                        className='w-full px-4 py-3 border text-black/80 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
                         required
                       >
                         <option value=''>Select Province</option>
                         {provinces.map(province => (
-                          <option key={province} value={province}>{province}</option>
+                          <option className='text-black/80' key={province} value={province}>{province}</option>
                         ))}
                       </select>
                     </div>
@@ -283,7 +559,7 @@ function CheckoutPage() {
                           name='addressLine1'
                           value={address.addressLine1}
                           onChange={handleAddressChange}
-                          className='w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
+                          className='w-full pl-10 pr-4 py-3 border text-black/80 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
                           placeholder='123 Main Street'
                           required
                         />
@@ -299,7 +575,7 @@ function CheckoutPage() {
                         name='addressLine2'
                         value={address.addressLine2}
                         onChange={handleAddressChange}
-                        className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
+                        className='w-full px-4 py-3 border text-black/80 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
                         placeholder='Apartment, suite, etc.'
                       />
                     </div>
@@ -313,7 +589,7 @@ function CheckoutPage() {
                         name='city'
                         value={address.city}
                         onChange={handleAddressChange}
-                        className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
+                        className='w-full px-4 py-3 border text-black/80 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
                         placeholder='Colombo'
                         required
                       />
@@ -328,7 +604,7 @@ function CheckoutPage() {
                         name='postalCode'
                         value={address.postalCode}
                         onChange={handleAddressChange}
-                        className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
+                        className='w-full px-4 py-3 border text-black/80 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
                         placeholder='00100'
                         required
                       />
@@ -378,55 +654,23 @@ function CheckoutPage() {
                   <h3 className='text-lg font-semibold text-gray-900 mb-4'>Choose Payment Method</h3>
                   <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-6'>
                     <div
-                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'credit-card' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-                      onClick={() => setPaymentMethod('credit-card')}
+                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'payhere' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                      onClick={() => setPaymentMethod('payhere')}
                     >
                       <div className='flex items-center'>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 ${paymentMethod === 'credit-card' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
-                          {paymentMethod === 'credit-card' && (
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 ${paymentMethod === 'payhere' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
+                          {paymentMethod === 'payhere' && (
                             <div className='w-2 h-2 rounded-full bg-white'></div>
                           )}
                         </div>
-                        <AiOutlineCreditCard className='text-2xl text-gray-600 mr-3' />
+                        <img 
+                          src="https://www.payhere.lk/favicon.ico" 
+                          alt="PayHere" 
+                          className='w-6 h-6 mr-3'
+                        />
                         <div>
-                          <h4 className='font-medium text-gray-900'>Credit/Debit Card</h4>
-                          <p className='text-sm text-gray-600'>Pay with Visa, Mastercard</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div
-                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'paypal' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-                      onClick={() => setPaymentMethod('paypal')}
-                    >
-                      <div className='flex items-center'>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 ${paymentMethod === 'paypal' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
-                          {paymentMethod === 'paypal' && (
-                            <div className='w-2 h-2 rounded-full bg-white'></div>
-                          )}
-                        </div>
-                        <FaCcPaypal className='text-2xl text-blue-600 mr-3' />
-                        <div>
-                          <h4 className='font-medium text-gray-900'>PayPal</h4>
-                          <p className='text-sm text-gray-600'>Safer, easier way to pay</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div
-                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === 'bank-transfer' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-                      onClick={() => setPaymentMethod('bank-transfer')}
-                    >
-                      <div className='flex items-center'>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 ${paymentMethod === 'bank-transfer' ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
-                          {paymentMethod === 'bank-transfer' && (
-                            <div className='w-2 h-2 rounded-full bg-white'></div>
-                          )}
-                        </div>
-                        <AiOutlineBank className='text-2xl text-gray-600 mr-3' />
-                        <div>
-                          <h4 className='font-medium text-gray-900'>Bank Transfer</h4>
-                          <p className='text-sm text-gray-600'>Direct bank payment</p>
+                          <h4 className='font-medium text-gray-900'>PayHere</h4>
+                          <p className='text-sm text-gray-600'>Credit/Debit Cards, Online Banking</p>
                         </div>
                       </div>
                     </div>
@@ -451,95 +695,36 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Credit Card Form */}
-                {paymentMethod === 'credit-card' && (
-                  <div className='mb-8'>
-                    <h3 className='text-lg font-semibold text-gray-900 mb-4'>Card Details</h3>
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                      <div className='md:col-span-2'>
-                        <label className='block text-sm font-medium text-gray-700 mb-2'>
-                          Card Number
-                        </label>
-                        <div className='relative'>
-                          <AiOutlineCreditCard className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
-                          <input
-                            type='text'
-                            name='cardNumber'
-                            value={payment.cardNumber}
-                            onChange={handlePaymentChange}
-                            className='w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
-                            placeholder='1234 5678 9012 3456'
-                            maxLength='19'
-                          />
-                          <div className='absolute right-3 top-1/2 transform -translate-y-1/2 flex gap-2'>
-                            <FaCcVisa className='text-2xl text-gray-400' />
-                            <FaCcMastercard className='text-2xl text-gray-400' />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className='md:col-span-2'>
-                        <label className='block text-sm font-medium text-gray-700 mb-2'>
-                          Name on Card
-                        </label>
-                        <input
-                          type='text'
-                          name='cardName'
-                          value={payment.cardName}
-                          onChange={handlePaymentChange}
-                          className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
-                          placeholder='JOHN DOE'
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-2'>
-                          Expiry Date
-                        </label>
-                        <input
-                          type='text'
-                          name='expiryDate'
-                          value={payment.expiryDate}
-                          onChange={handlePaymentChange}
-                          className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
-                          placeholder='MM/YY'
-                          maxLength='5'
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-2'>
-                          CVV
-                        </label>
-                        <div className='relative'>
-                          <AiOutlineLock className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
-                          <input
-                            type='text'
-                            name='cvv'
-                            value={payment.cvv}
-                            onChange={handlePaymentChange}
-                            className='w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
-                            placeholder='123'
-                            maxLength='3'
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className='md:col-span-2'>
-                        <div className='flex items-center'>
-                          <input
-                            type='checkbox'
-                            id='saveCard'
-                            checked={payment.saveCard}
-                            onChange={(e) => setPayment(prev => ({ ...prev, saveCard: e.target.checked }))}
-                            className='w-4 h-4 text-blue-600 rounded focus:ring-blue-500'
-                          />
-                          <label htmlFor='saveCard' className='ml-2 text-sm text-gray-700'>
-                            Save this card for future purchases
-                          </label>
-                        </div>
-                      </div>
+                {/* PayHere Info */}
+                {paymentMethod === 'payhere' && (
+                  <div className='mb-8 p-4 bg-blue-50 rounded-lg'>
+                    <h3 className='text-lg font-semibold text-gray-900 mb-2'>Pay with PayHere</h3>
+                    <p className='text-sm text-gray-700 mb-3'>
+                      You will be redirected to PayHere's secure payment page to complete your payment.
+                      Accepted payment methods:
+                    </p>
+                    <div className='flex gap-3 flex-wrap'>
+                      <FaCcVisa className='text-3xl text-gray-700' />
+                      <FaCcMastercard className='text-3xl text-gray-700' />
+                      <img src="https://www.payhere.lk/images/logo-amex.png" alt="Amex" className='h-8' />
+                      <img src="https://www.payhere.lk/images/logo-frimi.png" alt="Frimi" className='h-8' />
                     </div>
+                    <div className="mb-4 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={testPayHereConfig}
+                        className="text-xs text-gray-500 hover:text-gray-700 underline"
+                      >
+                        Test Payment Gateway Connection
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Display */}
+                {paymentError && (
+                  <div className='mb-8 p-4 bg-red-50 border border-red-200 rounded-lg'>
+                    <p className='text-sm text-red-600'>{paymentError}</p>
                   </div>
                 )}
 
@@ -552,6 +737,7 @@ function CheckoutPage() {
                       checked={agreeTerms}
                       onChange={(e) => setAgreeTerms(e.target.checked)}
                       className='w-5 h-5 mt-1 text-blue-600 rounded focus:ring-blue-500'
+                      required
                     />
                     <label htmlFor='agreeTerms' className='ml-3 text-sm text-gray-700'>
                       I agree to the{' '}
@@ -574,7 +760,7 @@ function CheckoutPage() {
                     <div>
                       <p className='text-sm text-blue-800 font-medium'>Secure Payment</p>
                       <p className='text-xs text-blue-700'>
-                        Your payment information is encrypted and secure. We never store your credit card details.
+                        Your payment information is encrypted and secure. PayHere is PCI-DSS compliant.
                       </p>
                     </div>
                   </div>
@@ -585,15 +771,33 @@ function CheckoutPage() {
                     type='button'
                     onClick={() => setStep(1)}
                     className='px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors'
+                    disabled={loading}
                   >
                     Back to Shipping
                   </button>
                   <button
                     onClick={handlePaymentSubmit}
-                    className='px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transition-colors flex items-center'
+                    disabled={loading || !agreeTerms}
+                    className={`px-8 py-3 font-semibold rounded-lg transition-colors flex items-center ${
+                      loading || !agreeTerms
+                        ? 'bg-gray-400 cursor-not-allowed text-white'
+                        : 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800'
+                    }`}
                   >
-                    <AiOutlineLock className='mr-2' />
-                    Place Order
+                    {loading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <AiOutlineLock className='mr-2' />
+                        {paymentMethod === 'payhere' ? 'Pay with PayHere' : 'Place Order (COD)'}
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -611,20 +815,31 @@ function CheckoutPage() {
                   </p>
                   <div className='bg-gray-50 p-6 rounded-xl mb-8 max-w-md mx-auto'>
                     <div className='text-sm text-gray-600 mb-2'>Order Number</div>
-                    <div className='text-2xl font-bold text-gray-900 mb-4'>ORD-{Date.now().toString().slice(-8)}</div>
+                    <div className='text-2xl font-bold text-gray-900 mb-4'>{orderId}</div>
                     <div className='text-sm text-gray-600'>
                       A confirmation email has been sent to <span className='font-medium'>{address.email}</span>
                     </div>
+                    {paymentMethod === 'payhere' && (
+                      <div className='mt-4 p-3 bg-green-50 rounded-lg'>
+                        <p className='text-sm text-green-700'>
+                          ✓ Payment successful. Your transaction has been completed.
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-                    <Link
-                      to='/orders'
+                    {orderRResult&&<Link
+                      to='/delivery'
+                      state={{ 
+                        orderData: orderRResult.order,
+                        orderId: orderRResult.order.id 
+                      }}
                       className='px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors'
                     >
-                      View Order Details
-                    </Link>
+                      Give Delivery Location
+                    </Link>}
                     <Link
-                      to='/items'
+                      to='/products'
                       className='px-8 py-3 border-2 border-blue-600 text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-colors'
                     >
                       Continue Shopping
@@ -743,12 +958,12 @@ function CheckoutPage() {
                 <div className='text-center'>
                   <p className='text-sm text-gray-600 mb-3'>Need help with your order?</p>
                   <div className='flex flex-col sm:flex-row gap-3'>
-                    <Link
-                      to='/contact'
+                    <a
+                      onClick={() =>paymentService.checkHealth()}
                       className='px-4 py-2 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-sm'
                     >
                       Contact Support
-                    </Link>
+                    </a>
                     <a
                       href='tel:+94112XXXXXX'
                       className='px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors text-sm'

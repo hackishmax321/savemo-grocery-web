@@ -16,6 +16,7 @@ const ItemsManagementPage = () => {
   const [stockFilter, setStockFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [updatingItems, setUpdatingItems] = useState({});
 
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
@@ -262,6 +263,115 @@ const ItemsManagementPage = () => {
       discountPercentage: 0
     });
     setErrors({});
+  };
+
+  // Toggle stock status
+  const handleToggleStock = async (item) => {
+    try {
+      setUpdatingItems(prev => ({ ...prev, [item.docId]: 'stock' }));
+      
+      // Determine new stock status
+      let newStockStatus;
+      if (item.stockStatus === 'in_stock' || item.stockStatus === 'high_stock') {
+        newStockStatus = 'out_of_stock';
+      } else {
+        newStockStatus = 'in_stock';
+      }
+      
+      // Update locally first for immediate UI feedback
+      setItems(prevItems => 
+        prevItems.map(i => 
+          i.docId === item.docId 
+            ? { ...i, stockStatus: newStockStatus } 
+            : i
+        )
+      );
+      
+      // Call service to update in database
+      const result = await groceryService.updateItem(item.docId, {
+        stockStatus: newStockStatus,
+        quantity: newStockStatus === 'out_of_stock' ? 0 : (item.quantity || 1)
+      });
+      
+      if (!result.success) {
+        // Revert on error
+        setItems(prevItems => 
+          prevItems.map(i => 
+            i.docId === item.docId 
+              ? { ...i, stockStatus: item.stockStatus } 
+              : i
+          )
+        );
+        console.error('Error updating stock status:', result.error);
+      }
+    } catch (error) {
+      console.error('Error toggling stock status:', error);
+      // Revert on error
+      setItems(prevItems => 
+        prevItems.map(i => 
+          i.docId === item.docId 
+            ? { ...i, stockStatus: item.stockStatus } 
+            : i
+        )
+      );
+    } finally {
+      setUpdatingItems(prev => {
+        const newState = { ...prev };
+        delete newState[item.docId];
+        return newState;
+      });
+    }
+  };
+
+  // Toggle featured status
+  const handleToggleFeatured = async (item) => {
+    try {
+      setUpdatingItems(prev => ({ ...prev, [item.docId]: 'featured' }));
+      
+      const newFeaturedStatus = !item.isFeatured;
+      
+      // Update locally first for immediate UI feedback
+      setItems(prevItems => 
+        prevItems.map(i => 
+          i.docId === item.docId 
+            ? { ...i, isFeatured: newFeaturedStatus } 
+            : i
+        )
+      );
+      
+      // Call service to update in database
+      const result = await groceryService.updateItem(item.docId, {
+        isFeatured: newFeaturedStatus
+      });
+      
+      if (!result.success) {
+        // Revert on error
+        setItems(prevItems => 
+          prevItems.map(i => 
+            i.docId === item.docId 
+              ? { ...i, isFeatured: item.isFeatured } 
+              : i
+          )
+        );
+        console.error('Error updating featured status:', result.error);
+      }
+    } catch (error) {
+      console.error('Error toggling featured status:', error);
+      // Revert on error
+      setItems(prevItems => 
+        prevItems.map(i => 
+          i.docId === item.docId 
+            ? { ...i, isFeatured: item.isFeatured } 
+            : i
+        )
+      );
+    } finally {
+      setUpdatingItems(prev => {
+        const newState = { ...prev };
+        delete newState[item.docId];
+        return newState;
+      });
+    }
   };
 
   const handleDelete = async (itemId) => {
@@ -546,6 +656,9 @@ const ItemsManagementPage = () => {
                         Status
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Quick Actions
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                         </th>
                     </tr>
@@ -553,7 +666,7 @@ const ItemsManagementPage = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                     {filteredItems.length === 0 ? (
                         <tr>
-                        <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                             No items found. {searchTerm && 'Try a different search term.'}
                         </td>
                         </tr>
@@ -628,6 +741,51 @@ const ItemsManagementPage = () => {
                             {getStockStatusBadge(item.stockStatus)}
                             <div className="text-xs text-gray-500 mt-1">
                                 Added: {formatDate(item.createdAt)}
+                            </div>
+                            </td>
+                            <td className="px-6 py-4">
+                            <div className="flex flex-col space-y-2">
+                                {/* Stock Toggle Switch */}
+                                <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500 mr-2">Stock:</span>
+                                <button
+                                    onClick={() => handleToggleStock(item)}
+                                    disabled={updatingItems[item.docId] === 'stock'}
+                                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                                    item.stockStatus !== 'out_of_stock' ? 'bg-green-600' : 'bg-gray-300'
+                                    } ${updatingItems[item.docId] === 'stock' ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                >
+                                    <span
+                                    className={`inline-block w-4 h-4 transform transition-transform bg-white rounded-full ${
+                                        item.stockStatus !== 'out_of_stock' ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                    />
+                                </button>
+                                {/* <span className="ml-2 text-xs">
+                                    {item.stockStatus !== 'out_of_stock' ? 'Available' : 'Out'}
+                                </span> */}
+                                </div>
+                                
+                                {/* Featured Toggle Switch */}
+                                <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500 mr-2">Featured:</span>
+                                <button
+                                    onClick={() => handleToggleFeatured(item)}
+                                    disabled={updatingItems[item.docId] === 'featured'}
+                                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 ${
+                                    item.isFeatured ? 'bg-yellow-500' : 'bg-gray-300'
+                                    } ${updatingItems[item.docId] === 'featured' ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                >
+                                    <span
+                                    className={`inline-block w-4 h-4 transform transition-transform bg-white rounded-full ${
+                                        item.isFeatured ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                    />
+                                </button>
+                                {/* <span className="ml-2 text-xs">
+                                    {item.isFeatured ? 'Yes' : 'No'}
+                                </span> */}
+                                </div>
                             </div>
                             </td>
                             <td className="px-6 py-4">

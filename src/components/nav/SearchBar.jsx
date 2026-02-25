@@ -49,7 +49,7 @@ function SearchBar() {
         <div className='flex-1 mx-6 my-3 max-w-2xl md:max-w-xl'>
             <form onSubmit={handleSearch} className='relative flex'>
                 {/* Category Dropdown */}
-                <div className='relative'>
+                <div className='relative hidden md:block xl:block'>
                     <button
                         type='button'
                         onClick={() => setIsCategoryOpen(!isCategoryOpen)}

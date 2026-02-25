@@ -2,23 +2,35 @@ import React, { useState, useEffect, useRef } from 'react';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
+import { useNavigate } from 'react-router-dom';
 
 const carouselSlides = [
   {
     id: 1,
-    image: '/banners/ban1.jpg',
+    image: '/banners/ban2_imresizer.jpg',
     title: 'Welcome to Our Marketplace',
     description: 'Discover amazing items from trusted sellers',
     buttonText: 'Shop Now',
     overlayPosition: 'bottom-right',
+    navigateTo: '/products'
   },
   {
     id: 2,
-    image: '/banners/ban2.jpg',
+    image: '/banners/ban1.jpg',
     title: 'Summer Collection 2024',
     description: 'Hot deals up to 50% off',
     buttonText: 'Explore Deals',
     overlayPosition: 'bottom-right',
+    navigateTo: '/products?category=Ramadan Essentials'
+  },
+  {
+    id: 3,
+    image: '/banners/ban3_imresizer.jpg',
+    title: 'Packstore',
+    description: 'Hot deals up to 50% off',
+    buttonText: 'Explore Deals',
+    overlayPosition: 'bottom-right',
+    navigateTo: 'https://packstore.lk/'
   },
 ];
 
@@ -81,7 +93,7 @@ const NextArrow = ({ onClick, currentSlide, slideCount }) => {
   );
 };
 
-const GlassOverlay = ({ title, description, buttonText, position = 'bottom-left' }) => {
+const GlassOverlay = ({ title, description, buttonText, position = 'bottom-left', onButtonClick }) => {
   const positionClasses = {
     'bottom-left': 'left-4 sm:left-6 bottom-4 sm:bottom-6 text-left',
     'bottom-center': 'left-1/2 transform -translate-x-1/2 bottom-4 sm:bottom-6 text-center',
@@ -94,7 +106,13 @@ const GlassOverlay = ({ title, description, buttonText, position = 'bottom-left'
         <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-1 sm:mb-2 md:mb-3">{title}</h2>
         <p className="text-white/90 mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm md:text-base lg:text-lg">{description}</p>
         {buttonText && (
-          <button className="bg-white text-gray-900 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-300 text-xs sm:text-sm md:text-base">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering the banner click
+              onButtonClick();
+            }}
+            className="bg-white text-gray-900 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 rounded-lg font-semibold hover:bg-gray-100 transition duration-300 text-xs sm:text-sm md:text-base"
+          >
             {buttonText}
           </button>
         )}
@@ -107,6 +125,7 @@ const HomeCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
   const sliderRef = useRef(null);
+  const navigate = useNavigate();
 
   const settings = {
     dots: true,
@@ -119,7 +138,7 @@ const HomeCarousel = () => {
     pauseOnHover: true,
     arrows: true,
     fade: false,
-    adaptiveHeight: true,
+    adaptiveHeight: false, // Set to false to maintain consistent height
     prevArrow: <PrevArrow currentSlide={currentSlide} />,
     nextArrow: <NextArrow currentSlide={currentSlide} slideCount={carouselSlides.length} />,
     beforeChange: (oldIndex, newIndex) => {
@@ -170,59 +189,70 @@ const HomeCarousel = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleBannerClick = (navigateTo) => {
+    navigate(navigateTo);
+  };
+
+  const handleButtonClick = (navigateTo, e) => {
+    e.stopPropagation();
+    navigate(navigateTo);
+  };
+
   return (
     <div 
-      className="relative w-full overflow-hidden bg-gray-100"
+      className="relative w-full bg-gray-100"
+      style={{
+        height: '0',
+        paddingBottom: '40%', // This creates a fixed aspect ratio container (adjust percentage as needed)
+        position: 'relative',
+        overflow: 'hidden'
+      }}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <Slider ref={sliderRef} {...settings}>
-        {carouselSlides.map((slide) => (
-          <div key={slide.id} className="relative outline-none">
-            {/* Image Container */}
-            <div className="relative w-full flex justify-center items-center">
-              <img
-                src={slide.image}
-                alt={slide.title}
-                className="w-full h-auto max-h-[600px] object-contain"
+      <div className="absolute inset-0">
+        <Slider ref={sliderRef} {...settings}>
+          {carouselSlides.map((slide) => (
+            <div 
+              key={slide.id} 
+              className="relative outline-none cursor-pointer"
+              onClick={() => handleBannerClick(slide.navigateTo)}
+            >
+              {/* Image Container - Fixed aspect ratio */}
+              <div 
+                className="relative w-full"
                 style={{
-                  maxHeight: '80vh',
+                  height: '0',
+                  paddingBottom: '40%', // Match parent container's aspect ratio
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}
-                onError={(e) => {
-                  e.target.src = '/fallback-image.jpg';
-                }}
-              />
-              
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0  pointer-events-none"></div>
-              
-              {/* Glass Overlay Container */}
-              {/* <GlassOverlay
-                title={slide.title}
-                description={slide.description}
-                buttonText={slide.buttonText}
-                position={slide.overlayPosition}
-              /> */}
+              >
+                <img
+                  src={slide.image}
+                  alt={slide.title}
+                  className="absolute inset-0 w-full h-full object-cover" // object-cover ensures image covers container without distortion
+                  onError={(e) => {
+                    e.target.src = '/fallback-image.jpg';
+                  }}
+                />
+                
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 pointer-events-none"></div>
+                
+                {/* Glass Overlay Container */}
+                {/* <GlassOverlay
+                  title={slide.title}
+                  description={slide.description}
+                  buttonText={slide.buttonText}
+                  position={slide.overlayPosition}
+                  onButtonClick={(e) => handleButtonClick(slide.navigateTo, e)}
+                /> */}
+              </div>
             </div>
-          </div>
-        ))}
-      </Slider>
-      
-      {/* Navigation hint - appears on hover */}
-      <div className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 z-30 
-                      transition-opacity duration-300 
-                      ${isHovering ? 'opacity-100' : 'opacity-0'}
-                      bg-black/60 text-white text-xs px-3 py-1.5 rounded-full 
-                      pointer-events-none backdrop-blur-sm border border-white/20`}>
-        <span className="flex items-center space-x-2">
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span>Use keyboard arrows</span>
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </span>
+          ))}
+        </Slider>
+        
       </div>
     </div>
   );

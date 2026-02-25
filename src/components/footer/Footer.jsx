@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 import { routes } from '../../constants/Routes'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { FaFacebook, FaInstagram, FaLinkedin, FaTwitter, FaCcVisa, FaCcMastercard, FaCcAmex } from 'react-icons/fa'
 import contactService from '../../services/Contact.service';
+import { Categories } from '../../constants/Categories';
 
 function Footer() {
+  const navigate = useNavigate();
   const [footerForm, setFooterForm] = useState({
     email: '',
     message: ''
@@ -151,6 +153,7 @@ function Footer() {
                 <li key={index}>
                   <Link 
                     to={path} 
+                    onClick={() => window.scrollTo(0, 0)} // Add this line
                     className="text-white/80 hover:text-white hover:underline transition-colors duration-200 flex items-center"
                   >
                     <span className="mr-2">→</span>
@@ -166,16 +169,20 @@ function Footer() {
             <h3 className="text-xl font-bold mb-6 border-b border-white/20 pb-2 w-full text-center md:text-left">
               Shop By Category
             </h3>
+
             <ul className="space-y-3">
-              {['Electronics', 'Fashion', 'Home & Kitchen', 'Beauty', 'Sports', 'Books'].map((category) => (
-                <li key={category}>
-                  <a 
-                    href="#" 
-                    className="text-white/80 hover:text-white transition-colors duration-200 flex items-center group"
+              {Categories.slice(0, 6).map((category) => (
+                <li key={category._id || category.name}>
+                  <span
+                    onClick={() => {
+                      navigate(`/products?category=${category.name}`);
+                      window.location.reload();
+                    }}
+                    className="text-white/80 hover:text-white transition-colors duration-200 flex items-center group cursor-pointer"
                   >
                     <span className="w-2 h-2 bg-white/50 rounded-full mr-3 group-hover:bg-white transition-colors"></span>
-                    {category}
-                  </a>
+                    {category.name}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -194,16 +201,20 @@ function Footer() {
             
             {/* Payment Methods FIGURE */}
             <div className="flex space-x-4">
-              {['facebook', 'instagram'].map((social) => (
+              {[
+                { name: 'facebook', link: 'https://fb.com/savemodeals', icon: FaFacebook },
+                { name: 'instagram', link: 'https://www.instagram.com/_savemo_', icon: FaInstagram }
+              ].map((social) => (
                 <a 
-                  key={social}
-                  href="#" 
+                  key={social.name}
+                  href={social.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors duration-300"
-                  aria-label={`Follow us on ${social}`}
+                  aria-label={`Follow us on ${social.name}`}
                 >
                   <span className="text-lg">
-                    {social === 'facebook' && <FaFacebook/>}
-                    {social === 'instagram' && <FaInstagram/>}
+                    <social.icon />
                   </span>
                 </a>
               ))}
@@ -222,12 +233,12 @@ function Footer() {
               {[
                 { label: 'Privacy Policy', path: '/policy' },
                 { label: 'Terms of Service', path: '/terms' },
-                // { label: 'Cookie Policy', path: '/cookie-policy' }, 
                 { label: 'Return Policy', path: '/return' },
               ].map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
+                  onClick={() => window.scrollTo(0, 0)} // Add this line
                   className="text-white/70 hover:text-white transition-colors"
                 >
                   {item.label}

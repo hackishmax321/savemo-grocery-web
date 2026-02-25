@@ -4,7 +4,7 @@ import { IoFilter, IoRefresh } from 'react-icons/io5'
 import { Categories } from '../../constants/Categories'
 
 function FilterContainer({ allItems = [], onFilterChange, initialFilters = null, searchTerm = '', onReset  }) {
-  const [priceRange, setPriceRange] = useState([0, 2000])
+  const [priceRange, setPriceRange] = useState([0, 25000])
   const [selectedCategories, setSelectedCategories] = useState({})
   const [filters, setFilters] = useState({
     ratings: {
@@ -76,7 +76,7 @@ function FilterContainer({ allItems = [], onFilterChange, initialFilters = null,
   }
 
   const resetFilters = () => {
-    setPriceRange([0, 2000])
+    setPriceRange([0, 25000])
     const resetCategories = {}
     Categories.forEach(category => {
       resetCategories[category.id] = false
@@ -95,11 +95,13 @@ function FilterContainer({ allItems = [], onFilterChange, initialFilters = null,
 
   const applyFilters = () => {
     let filtered = [...allItems]
+    console.log(allItems)
 
     // Price filter
     filtered = filtered.filter(item => 
       item.price >= priceRange[0] && item.price <= priceRange[1]
     )
+    
 
     // Category filter (if any category is selected)
     const activeCategories = Object.keys(selectedCategories).filter(
@@ -142,7 +144,7 @@ function FilterContainer({ allItems = [], onFilterChange, initialFilters = null,
     const categoryCount = Object.values(selectedCategories).filter(Boolean).length
     const ratingCount = Object.values(filters.ratings).filter(Boolean).length
     const availabilityCount = filters.availability ? 1 : 0
-    const priceCount = priceRange[0] > 0 || priceRange[1] < 2000 ? 1 : 0
+    const priceCount = priceRange[0] > 0 || priceRange[1] < 25000 ? 1 : 0
     
     return categoryCount + ratingCount + availabilityCount + priceCount
   }
@@ -193,7 +195,7 @@ function FilterContainer({ allItems = [], onFilterChange, initialFilters = null,
               <input
                 type='range'
                 min='0'
-                max='2000'
+                max='25000'
                 step='10'
                 value={priceRange[0]}
                 onChange={(e) => handlePriceChange(0, e.target.value)}
@@ -204,7 +206,7 @@ function FilterContainer({ allItems = [], onFilterChange, initialFilters = null,
               <input
                 type='range'
                 min='0'
-                max='2000'
+                max='25000'
                 step='10'
                 value={priceRange[1]}
                 onChange={(e) => handlePriceChange(1, e.target.value)}

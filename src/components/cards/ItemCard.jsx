@@ -1,14 +1,46 @@
 import React, { useEffect, useState } from 'react'
 import { useCart } from '../../providers/CartProvide' 
 import { useNavigate } from 'react-router-dom';
+import Notiflix from 'notiflix';
 
 function ItemCard({ item }) {
   const navigate = useNavigate();
   const { name, description, price, image, categoryId, rating, inStock, id } = item
   const [isWishlisted, setIsWishlisted] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [showLoginHint, setShowLoginHint] = useState(false)
   
   // Use the cart context
   const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useCart()
+
+  Notiflix.Notify.init({
+    position: 'right-bottom',
+    distance: '15px',
+    timeout: 3000,
+    clickToClose: true,
+  });
+
+  // Check authentication status
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = () => {
+    const userStr = sessionStorage.getItem('currentUser');
+    const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
+    
+    if (userStr && isAuthenticated) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        setCurrentUser(null);
+      }
+    } else {
+      setCurrentUser(null);
+    }
+  };
 
   // Initialize wishlist state
   useEffect(() => { 
@@ -16,10 +48,19 @@ function ItemCard({ item }) {
   }, [item.id, isInWishlist])
 
   const handleAddToCart = () => {
+    // Check if user is logged in
+    if (!currentUser) {
+      setShowLoginHint(true);
+      // Auto-hide hint after 3 seconds
+      setTimeout(() => setShowLoginHint(false), 3000);
+      return;
+    }
+
     if (inStock) {
       addToCart(item, 1)
-      // You can add a toast notification here
-      console.log(`${name} added to cart`)
+      Notiflix.Notify.success(`${name} added to cart successfully!`);
+    } else {
+      Notiflix.Notify.failure('Sorry! This item is out of stock.');
     }
   }
 
@@ -37,7 +78,13 @@ function ItemCard({ item }) {
   }
 
   const handleQuickView = () => {
+    window.scrollTo(0, 0)
     navigate(`/products/${item.id || item.docId}`);
+  };
+
+  const handleLoginClick = () => {
+    // You can replace this with your actual login navigation
+    navigate('/login', { state: { from: '/' } });
   };
 
   const getCategoryDisplayName = (cat) => {
@@ -50,7 +97,7 @@ function ItemCard({ item }) {
   }
 
   return (
-    <div className='bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100'>
+    <div className='bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 relative'>
       {/* Image Container */}
       <div className='relative h-48 md:h-56 overflow-hidden bg-gray-50'>
         <img 
@@ -58,6 +105,9 @@ function ItemCard({ item }) {
           alt={name}
           className='w-full h-full object-contain p-4 hover:scale-105 transition-transform duration-300'
           loading='lazy'
+          onError={(e) => {
+            e.target.src = 'https://png.pngtree.com/png-vector/20190501/ourmid/pngtree-verified-cart-items-icon-design-png-image_1013191.png';
+          }}
         />
         {/* Stock Status Badge */}
         <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-semibold ${inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -76,12 +126,7 @@ function ItemCard({ item }) {
           <h3 className='font-bold text-gray-900 text-lg truncate pr-2' title={name}>
             {name}
           </h3>
-          <div className='flex items-center bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm font-semibold min-w-[60px] justify-center'>
-            <svg className='w-4 h-4 mr-1' fill='currentColor' viewBox='0 0 20 20'>
-              <path d='M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z' />
-            </svg>
-            {rating.toFixed(1)}
-          </div>
+          {/* Rating comment kept for reference */}
         </div>
 
         {/* Description */}
@@ -89,25 +134,58 @@ function ItemCard({ item }) {
           {description}
         </p>
 
-        {/* Price and Action Button */}
-        <div className='flex justify-between items-center'>
-          <div>
-            <span className='font-bold text-xl text-gray-900 mr-1'>Rs.{price.toFixed(2)}</span>
+        {/* Price and Action Button - Responsive Layout */}
+        <div className='flex flex-row lg:flex-col lg:justify-between lg:items-center gap-3 lg:gap-0'>
+          {/* Price - Centered on mobile, left-aligned on desktop */}
+          <div className='text-center sm:text-left'>
+            <span className='font-bold text-xl text-gray-900'>Rs.{price.toFixed(2)}</span>
           </div>
-          <button 
-            onClick={handleAddToCart} // Updated to use handleAddToCart
-            className={`px-4 py-2 text-xs rounded-lg font-medium transition-all duration-200 ${inStock ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
-            disabled={!inStock}
-          >
-            {inStock ? 'Add to Cart' : 'Out of Stock'}
-          </button>
+          
+          {/* Action Button - Full width on mobile, auto on desktop */}
+          <div className='relative w-full sm:w-auto'>
+            {!currentUser && inStock ? (
+              <div className='relative w-full sm:w-auto'>
+                <button 
+                  onClick={handleAddToCart}
+                  className='w-full sm:w-auto px-4 py-2 text-xs rounded-lg font-medium transition-all duration-200 bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center gap-2'
+                >
+                  Add to Cart
+                </button>
+                {/* Login Hint Bubble */}
+                {showLoginHint && (
+                  <div className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 sm:w-56 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 text-center z-10 shadow-xl'>
+                    <div className='relative'>
+                      🔒 Please login to add items to cart
+                      <div className='absolute top-full left-1/2 transform -translate-x-1/2 -mt-1'>
+                        <div className='border-8 border-transparent border-t-gray-900'></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button 
+                onClick={handleAddToCart}
+                className={`w-full sm:w-auto px-4 py-2 text-xs rounded-lg font-medium transition-all duration-200 ${
+                  inStock 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                }`}
+                disabled={!inStock}
+              >
+                {inStock ? 'Add to Cart' : 'Out of Stock'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Quick Actions */}
         <div className='flex justify-between mt-4 pt-4 border-t border-gray-100'>
           <button 
-            onClick={handleWishlistToggle} // Updated to use handleWishlistToggle
-            className={`text-sm font-medium flex items-center transition-colors ${isWishlisted ? 'text-red-600 hover:text-red-800' : 'text-blue-600 hover:text-blue-800'}`}
+            onClick={handleWishlistToggle}
+            className={`text-sm font-medium flex items-center transition-colors ${
+              isWishlisted ? 'text-red-600 hover:text-red-800' : 'text-blue-600 hover:text-blue-800'
+            }`}
           >
             <svg className='w-4 h-4 mr-1' fill={isWishlisted ? 'currentColor' : 'none'} stroke='currentColor' viewBox='0 0 24 24'>
               <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' />
@@ -115,7 +193,7 @@ function ItemCard({ item }) {
             {isWishlisted ? 'Wishlisted' : 'Wishlist'}
           </button>
           <button 
-            onClick={handleQuickView} // Updated to use handleQuickView
+            onClick={handleQuickView}
             className='text-gray-600 hover:text-gray-800 text-sm font-medium flex items-center transition-colors'
           >
             <svg className='w-4 h-4 mr-1' fill='none' stroke='currentColor' viewBox='0 0 24 24'>

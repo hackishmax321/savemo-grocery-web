@@ -36,7 +36,7 @@ import {
 import { Link } from 'react-router-dom';
 
 function DashboardSidebar() {
-  const [activeTab, setActiveTab] = useState('NOTIFICATION');
+  const [activeTab, setActiveTab] = useState('PERSONAL_DETAILS');
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'New Order Received', time: '10 min ago', read: false },
     { id: 2, title: 'Inventory Low Alert', time: '1 hour ago', read: true },

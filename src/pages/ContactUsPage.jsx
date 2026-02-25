@@ -322,18 +322,22 @@ function ContactUsPage() {
                 Follow us on social media for the latest updates, promotions, and healthy living tips.
               </p>
               <div className='flex gap-4'>
-                {['facebook', 'instagram'].map((social) => (
-                    <a 
-                      key={social}
-                      href="#" 
-                      className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors duration-300"
-                      aria-label={`Follow us on ${social}`}
-                    >
-                      <span className="text-lg">
-                        {social === 'facebook' && <FaFacebook/>}
-                        {social === 'instagram' && <FaInstagram/>}
-                      </span>
-                    </a>
+                {[
+                                { name: 'facebook', link: 'https://fb.com/savemodeals', icon: FaFacebook },
+                                { name: 'instagram', link: 'https://www.instagram.com/_savemo_', icon: FaInstagram }
+                              ].map((social) => (
+                                <a 
+                                  key={social.name}
+                                  href={social.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors duration-300"
+                                  aria-label={`Follow us on ${social.name}`}
+                                >
+                                  <span className="text-lg">
+                                    <social.icon />
+                                  </span>
+                                </a>
                   ))}
               </div>
             </div>

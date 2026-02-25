@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { AiFillCloseSquare, AiOutlineMenu, AiOutlineSearch, AiOutlineSetting, AiOutlineShoppingCart, AiOutlineUser, AiOutlineDelete, AiOutlinePlus, AiOutlineMinus, AiOutlineLogin } from 'react-icons/ai'
 import { Link } from 'react-router-dom'
 import { useMediaQuery } from 'react-responsive'
@@ -14,9 +14,61 @@ function Nav({setShowAuth}) {
   const isMobile = useMediaQuery({maxWidth: 853})
   const [isMobileNav, setIsMobileNav] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
+
+  const prevCartLengthRef = useRef(0);
+  
+  // Refs for click outside detection
+  const cartRef = useRef(null);
+  const profileRef = useRef(null);
+  const cartButtonRef = useRef(null);
+  const profileButtonRef = useRef(null);
   
   // Use cart context
-  const { cart, getCartItemCount, updateCartItemQuantity, removeFromCart, getCartTotal } = useCart()
+  const { cart, getCartItemCount, updateCartItemQuantity, removeFromCart, getCartTotal, addToCart } = useCart()
+
+  useEffect(() => {
+    // Check if cart length increased (item was added)
+    if (cart.length > prevCartLengthRef.current) {
+      setIsCartOpen(true);
+      // Close profile dropdown if open
+      if (isOpen) setIsOpen(false);
+    }
+    // Update the ref with current cart length
+    prevCartLengthRef.current = cart.length;
+  }, [cart.length]);
+
+  // Handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Close cart if click is outside cart dropdown and cart button
+      if (isCartOpen && 
+          cartRef.current && 
+          !cartRef.current.contains(event.target) &&
+          cartButtonRef.current && 
+          !cartButtonRef.current.contains(event.target)) {
+        setIsCartOpen(false);
+      }
+      
+      // Close profile dropdown if click is outside profile dropdown and profile button
+      if (isOpen && 
+          profileRef.current && 
+          !profileRef.current.contains(event.target) &&
+          profileButtonRef.current && 
+          !profileButtonRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    // Add event listener when any dropdown is open
+    if (isCartOpen || isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCartOpen, isOpen]);
 
   useEffect(() => {
     checkAuthStatus();
@@ -134,7 +186,7 @@ function Nav({setShowAuth}) {
     <nav className='fixed top-0 left-0 w-full min-h-13 shadow-md z-50 bg-secondary '>
       <div className='container mx-auto px-1.5 py-2 inset-0 flex justify-between items-center'>
         <div className='text-xl font-bold '>
-          <Link to={'/'}>
+          <Link to={'/'} onClick={() => window.scrollTo(0, 0)}>
             <img src='/logo/logo-main2.png' className='h-15 object-contain'/>
           </Link>
         </div>
@@ -177,14 +229,14 @@ function Nav({setShowAuth}) {
         )}
         {!isMobile&&<div className='flex items-center space-x-6'>
           <ul className='flex gap-6 mr-4'>
-            <li><Link to={'/products'} className='text-font-primary-700 hover:text-gray-400 font-medium transition-colors'>ALL PRODUCTS</Link></li>
+            <li><Link to={'/products'} onClick={() => window.scrollTo(0, 0)} className='text-font-primary-700 hover:text-gray-400 font-medium transition-colors'>ALL PRODUCTS</Link></li>
             <li><a href={'https://packstore.lk/'} className='text-font-primary-700 hover:text-gray-400 font-medium transition-colors'>PACKSTORE</a></li>
             
           </ul>
         </div>}
         <div className='flex items-center gap-4'>
           {/* Cart Button with Dropdown */}
-          {logged&&<div className='relative'>
+          {logged&&<div className='relative' ref={cartButtonRef}>
             <button 
               className='relative p-2 hover:bg-highlight hover:text-font-primary rounded-full transition-colors'
               onClick={handleCartToggle}
@@ -197,7 +249,7 @@ function Nav({setShowAuth}) {
             
             {/* Cart Dropdown */}
             {isCartOpen && (
-              <div className='absolute top-full right-0 mt-3 w-80 md:w-96 bg-white rounded-lg shadow-xl z-50 border border-gray-200 animate-fadeIn'>
+              <div ref={cartRef} className='absolute top-full right-0 mt-3 w-80 md:w-96 bg-white rounded-lg shadow-xl z-50 border border-gray-200 animate-fadeIn'>
                 <div className="p-4">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-lg text-gray-800">Shopping Cart</h3>
@@ -297,7 +349,7 @@ function Nav({setShowAuth}) {
           
           {/* Profile Button with Dropdown */}
           {logged?(
-            <div className='relative'>
+            <div className='relative' ref={profileButtonRef}>
               <button 
                 className='relative p-2 hover:bg-highlight hover:text-font-primary rounded-full transition-colors' 
                 onClick={handleProfileToggle}
@@ -316,7 +368,7 @@ function Nav({setShowAuth}) {
               </button>
               
               {isOpen && (
-                <div className='absolute top-full right-0 mt-3 w-64 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl z-50 border border-gray-200 animate-fadeIn'>
+                <div ref={profileRef} className='absolute top-full right-0 mt-3 w-64 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl z-50 border border-gray-200 animate-fadeIn'>
                   <div className="p-4 ">
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
@@ -363,7 +415,7 @@ function Nav({setShowAuth}) {
                         </svg>
                         My Orders
                       </Link>
-                      <Link 
+                      {/* <Link 
                         to="/wishlist" 
                         className="flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                         onClick={() => setIsOpen(false)}
@@ -372,7 +424,7 @@ function Nav({setShowAuth}) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                         Wishlist
-                      </Link>
+                      </Link> */}
                     </div>
                     
                     <div className='flex gap-2'>

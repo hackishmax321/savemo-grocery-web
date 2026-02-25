@@ -4,6 +4,7 @@ import { FaShoppingCart, FaHeart, FaStar, FaRegStar, FaStarHalfAlt, FaTruck, FaS
 import groceryService from '../services/Item.service';
 import { useCart } from '../providers/CartProvide';
 import { Categories } from '../constants/Categories';
+import Notiflix from 'notiflix';
 
 function ProductDetailsPage() {
   const { id } = useParams();
@@ -14,20 +15,74 @@ function ProductDetailsPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [similarItems, setSimilarItems] = useState([]);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  // const [isWishlisted, setIsWishlisted] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLogged, setIsLogged] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   
   const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useCart();
+
+  Notiflix.Notify.init({
+      position: 'right-bottom',
+      distance: '15px',
+      timeout: 3000,
+      clickToClose: true,
+  });
+
+  // Default fallback image
+  const FALLBACK_IMAGE = 'https://png.pngtree.com/png-vector/20190501/ourmid/pngtree-verified-cart-items-icon-design-png-image_1013191.png';
+
+  // Check authentication status
+  const checkAuthStatus = () => {
+    const userStr = sessionStorage.getItem('currentUser');
+    const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
+    
+    if (userStr && isAuthenticated) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        setIsLogged(true);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        clearAuth();
+      }
+    } else {
+      clearAuth();
+    }
+  };
+
+  const clearAuth = () => {
+    setCurrentUser(null);
+    setIsLogged(false);
+  };
 
   // Load item details
   useEffect(() => {
     loadItemDetails();
   }, [id]);
 
+  // Check auth status on mount and listen for changes
+  useEffect(() => {
+    checkAuthStatus();
+    
+    // Listen for auth changes
+    const handleStorageChange = () => {
+      checkAuthStatus();
+    };
+    
+    // Listen for storage events (for cross-tab sync)
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   // Load similar items when item is loaded
   useEffect(() => {
     if (item) {
       loadSimilarItems();
-      setIsWishlisted(isInWishlist(item.docId || item.id));
+      // setIsWishlisted(isInWishlist(item.docId || item.id));
     }
   }, [item]);
 
@@ -69,22 +124,60 @@ function ProductDetailsPage() {
   };
 
   const handleAddToCart = () => {
-    if (item.inStock) {
-      addToCart(item, quantity);
-      // Show success feedback
-      alert(`${quantity} x ${item.name} added to cart`);
+    // Check if user is logged in
+    if (!currentUser) {
+      setShowLoginPrompt(true);
+      return;
+    }
+
+    if (displayItem.inStock) {
+      // Create a clean item object for cart with proper image
+      const cartItem = {
+        ...item,
+        id: item.docId || item.id,
+        image: getItemImage(item), // Ensure image is properly set
+        images: item.images || []   // Include images array if exists
+      };
+      
+      addToCart(cartItem, quantity);
+      Notiflix.Notify.success(`${item.name} added to cart successfully!`);
+    } else {
+      Notiflix.Notify.failure('Sorry! This item is out of stock.');
     }
   };
 
-  const handleWishlistToggle = () => {
-    if (isWishlisted) {
-      removeFromWishlist(item.docId || item.id);
-      setIsWishlisted(false);
-    } else {
-      addToWishlist(item);
-      setIsWishlisted(true);
+  // Helper function to get the item image
+  const getItemImage = (item) => {
+    if (item.images && item.images.length > 0 && item.images[0]) {
+      return item.images[0];
     }
+    if (item.image) {
+      return item.image;
+    }
+    return FALLBACK_IMAGE;
   };
+
+  const handleLoginPromptConfirm = () => {
+    setShowLoginPrompt(false);
+    navigate('/login', { state: { from: `/products/${id}` } });
+  };
+
+  const handleLoginPromptCancel = () => {
+    setShowLoginPrompt(false);
+  };
+
+  // const handleWishlistToggle = () => {
+  //   if (isWishlisted) {
+  //     removeFromWishlist(item.docId || item.id);
+  //     setIsWishlisted(false);
+  //     console.log(`${item.name} removed from wishlist`);
+  //   } else {
+  //     if (addToWishlist(item)) {
+  //       setIsWishlisted(true);
+  //       console.log(`${item.name} added to wishlist`);
+  //     }
+  //   }
+  // };
 
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change;
@@ -144,14 +237,38 @@ function ProductDetailsPage() {
     );
   }
 
-  // Transform item to match expected format
+  // Transform item to match expected format with proper image handling
   const displayItem = {
     ...item,
     id: item.docId || item.id,
-    images: item.images?.length > 0 ? item.images : [item.image || 'https://via.placeholder.com/600x600?text=No+Image'],
+    image: getItemImage(item), // Set the main image property
+    images: item.images?.length > 0 ? item.images : [getItemImage(item)], // Ensure images array exists
     inStock: item.stockStatus !== 'out_of_stock' && item.quantity > 0,
     categoryName: item.category || getCategoryName(item.categoryId)
   };
+
+  // Determine button styling based on auth status
+  const getButtonConfig = () => {
+    if (!currentUser) {
+      return null; // Return nothing when user is not logged in
+    }
+    
+    if (!displayItem.inStock) {
+      return {
+        text: 'Out of Stock',
+        className: 'flex-1 px-6 py-4 rounded-lg font-semibold flex items-center justify-center gap-3 transition-all bg-gray-200 text-gray-500 cursor-not-allowed',
+        disabled: true
+      };
+    }
+    
+    return {
+      text: 'Add to Cart',
+      className: 'flex-1 px-6 py-4 rounded-lg font-semibold flex items-center justify-center gap-3 transition-all bg-font-secondary hover:bg-font-alternate text-white',
+      disabled: false
+    };
+  };
+
+  const buttonConfig = getButtonConfig();
 
   return (
     <div className='min-h-screen px-4 sm:px-8 lg:px-12 py-8 bg-primary mt-16 md:mt-20'>
@@ -165,6 +282,30 @@ function ProductDetailsPage() {
           Back to Products
         </button>
 
+        {/* Login Prompt Modal */}
+        {showLoginPrompt && (
+          <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+            <div className='bg-white rounded-xl p-6 max-w-md mx-4'>
+              <h3 className='text-xl font-bold text-gray-800 mb-4'>Login Required</h3>
+              <p className='text-gray-600 mb-6'>Please login to add items to your cart.</p>
+              <div className='flex gap-3 justify-end'>
+                <button
+                  onClick={handleLoginPromptCancel}
+                  className='px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors'
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleLoginPromptConfirm}
+                  className='px-4 py-2 bg-font-secondary text-white rounded-lg hover:bg-font-alternate transition-colors'
+                >
+                  Login Now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Product Section - Two Column Layout */}
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16'>
           {/* Left Column - Images */}
@@ -173,9 +314,12 @@ function ProductDetailsPage() {
             <div className='bg-white rounded-2xl p-8 shadow-xl border border-gray-100'>
               <div className='relative aspect-square'>
                 <img
-                  src={displayItem.images[selectedImage]}
+                  src={displayItem.images[selectedImage] || FALLBACK_IMAGE}
                   alt={displayItem.name}
                   className='w-full h-full object-contain'
+                  onError={(e) => {
+                    e.target.src = FALLBACK_IMAGE;
+                  }}
                 />
                 {/* Sale Badge */}
                 {displayItem.isOnSale && (
@@ -203,7 +347,14 @@ function ProductDetailsPage() {
                       selectedImage === index ? 'border-font-secondary' : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <img src={img} alt={`${displayItem.name} ${index + 1}`} className='w-full h-20 object-contain' />
+                    <img 
+                      src={img || FALLBACK_IMAGE} 
+                      alt={`${displayItem.name} ${index + 1}`} 
+                      className='w-full h-20 object-contain'
+                      onError={(e) => {
+                        e.target.src = FALLBACK_IMAGE;
+                      }}
+                    />
                   </button>
                 ))}
               </div>
@@ -231,16 +382,6 @@ function ProductDetailsPage() {
             <h1 className='text-3xl md:text-4xl font-bold text-gray-800 mb-4'>
               {displayItem.name}
             </h1>
-
-            {/* Rating */}
-            <div className='flex items-center gap-3 mb-6'>
-              <div className='flex items-center gap-1'>
-                {renderRatingStars(displayItem.ratings?.average || 0)}
-              </div>
-              <span className='text-gray-600'>
-                ({displayItem.ratings?.count || 0} reviews)
-              </span>
-            </div>
 
             {/* Price */}
             <div className='mb-6'>
@@ -301,19 +442,21 @@ function ProductDetailsPage() {
 
             {/* Action Buttons */}
             <div className='flex flex-col sm:flex-row gap-4 mb-8'>
-              <button
-                onClick={handleAddToCart}
-                disabled={!displayItem.inStock}
-                className={`flex-1 px-6 py-4 rounded-lg font-semibold flex items-center justify-center gap-3 transition-all ${
-                  displayItem.inStock
-                    ? 'bg-font-secondary hover:bg-font-alternate text-white'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                <FaShoppingCart className="text-xl" />
-                {displayItem.inStock ? 'Add to Cart' : 'Out of Stock'}
-              </button>
-              <button
+              {buttonConfig ? (
+                <button
+                  onClick={handleAddToCart}
+                  disabled={buttonConfig.disabled}
+                  className={buttonConfig.className}
+                >
+                  <FaShoppingCart className="text-xl" />
+                  {buttonConfig.text}
+                </button>
+              ) : (
+                // Optional: Show nothing or a placeholder when user is not logged in
+                null // or <div className="flex-1"></div> for maintaining layout
+              )}
+              {/* Wishlist button commented out for now */}
+              {/* <button
                 onClick={handleWishlistToggle}
                 className={`px-6 py-4 rounded-lg font-semibold flex items-center justify-center gap-3 transition-all border-2 ${
                   isWishlisted
@@ -323,7 +466,7 @@ function ProductDetailsPage() {
               >
                 <FaHeart className={`text-xl ${isWishlisted ? 'fill-current' : ''}`} />
                 {isWishlisted ? 'Wishlisted' : 'Add to Wishlist'}
-              </button>
+              </button> */}
             </div>
 
             {/* Features */}
@@ -371,48 +514,55 @@ function ProductDetailsPage() {
             </div>
 
             <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6'>
-              {similarItems.map((similarItem) => (
-                <div
-                  key={similarItem.docId || similarItem.id}
-                  onClick={() => navigate(`/products/${similarItem.docId || similarItem.id}`)}
-                  className='bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 overflow-hidden group'
-                >
-                  <div className='relative h-40 bg-gray-50 p-4'>
-                    <img
-                      src={similarItem.images?.[0] || similarItem.image || 'https://via.placeholder.com/200x200?text=Product'}
-                      alt={similarItem.name}
-                      className='w-full h-full object-contain group-hover:scale-110 transition-transform duration-300'
-                    />
-                    {/* Stock Indicator */}
-                    <div className={`absolute bottom-2 right-2 w-3 h-3 rounded-full ${
-                      similarItem.stockStatus !== 'out_of_stock' && similarItem.quantity > 0
-                        ? 'bg-green-500'
-                        : 'bg-red-500'
-                    }`} />
-                  </div>
-                  <div className='p-4'>
-                    <h3 className='font-semibold text-gray-800 mb-1 truncate'>
-                      {similarItem.name}
-                    </h3>
-                    <div className='flex items-center gap-1 mb-2'>
-                      {renderRatingStars(similarItem.ratings?.average || 0)}
-                      <span className='text-xs text-gray-500 ml-1'>
-                        ({similarItem.ratings?.count || 0})
-                      </span>
+              {similarItems.map((similarItem) => {
+                const similarItemImage = similarItem.images?.[0] || similarItem.image || FALLBACK_IMAGE;
+                
+                return (
+                  <div
+                    key={similarItem.docId || similarItem.id}
+                    onClick={() => navigate(`/products/${similarItem.docId || similarItem.id}`)}
+                    className='bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 overflow-hidden group'
+                  >
+                    <div className='relative h-40 bg-gray-50 p-4'>
+                      <img
+                        src={similarItemImage}
+                        alt={similarItem.name}
+                        className='w-full h-full object-contain group-hover:scale-110 transition-transform duration-300'
+                        onError={(e) => {
+                          e.target.src = FALLBACK_IMAGE;
+                        }}
+                      />
+                      {/* Stock Indicator */}
+                      <div className={`absolute bottom-2 right-2 w-3 h-3 rounded-full ${
+                        similarItem.stockStatus !== 'out_of_stock' && similarItem.quantity > 0
+                          ? 'bg-green-500'
+                          : 'bg-red-500'
+                      }`} />
                     </div>
-                    <div className='flex items-center justify-between'>
-                      <span className='font-bold text-font-secondary'>
-                        Rs.{similarItem.price?.toFixed(2)}
-                      </span>
-                      {similarItem.isOnSale && (
-                        <span className='text-xs bg-red-100 text-red-800 px-2 py-1 rounded'>
-                          -{similarItem.discountPercentage}%
+                    <div className='p-4'>
+                      <h3 className='font-semibold text-gray-800 mb-1 truncate'>
+                        {similarItem.name}
+                      </h3>
+                      <div className='flex items-center gap-1 mb-2'>
+                        {renderRatingStars(similarItem.ratings?.average || 0)}
+                        <span className='text-xs text-gray-500 ml-1'>
+                          ({similarItem.ratings?.count || 0})
                         </span>
-                      )}
+                      </div>
+                      <div className='flex items-center justify-between'>
+                        <span className='font-bold text-font-secondary'>
+                          Rs.{similarItem.price?.toFixed(2)}
+                        </span>
+                        {similarItem.isOnSale && (
+                          <span className='text-xs bg-red-100 text-red-800 px-2 py-1 rounded'>
+                            -{similarItem.discountPercentage}%
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

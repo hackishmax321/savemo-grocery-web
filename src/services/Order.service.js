@@ -14,10 +14,16 @@ import {
   serverTimestamp,
   increment,
   arrayUnion,
-  arrayRemove,
   writeBatch
 } from "firebase/firestore";
 import { db } from "../db/Firebase.config";
+import axios from "axios";
+
+// Configure axios for payment backend
+const paymentApi = axios.create({
+  baseURL: import.meta.env.REACT_APP_PAYMENT_API_URL || 'https://payment-gate-payhere-node.onrender.com/api',
+  timeout: 10000,
+});
 
 class OrderService {
   constructor() {
@@ -26,175 +32,204 @@ class OrderService {
   }
 
   // ========== CRUD OPERATIONS ==========
-
   /**
-   * Create a new order
-   * @param {Object} orderData - Order data
-   * @returns {Promise<Object>} - Created order or error
-   */
-  async createOrder(orderData) {
-    try {
-      const {
-        items,
-        total,
-        subtotal,
-        tax,
-        deliveryFee,
-        promoCode,
-        discountAmount,
-        paidAmount,
-        paymentMethod,
-        paymentStatus,
-        orderStatus,
-        shippingInfo,
-        billingInfo,
-        customerId,
-        customerEmail,
-        customerName,
-        customerPhone,
-        notes,
-        storeId,
-        createdBy
-      } = orderData;
+ * Create a new order
+ * @param {Object} orderData - Order data
+ * @returns {Promise<Object>} - Created order or error
+ */
+async createOrder(orderData) {
+  try {
+    const {
+      items,
+      total,
+      subtotal,
+      tax,
+      deliveryFee,
+      promoCode,
+      discountAmount,
+      paidAmount,
+      paymentMethod,
+      paymentStatus,
+      orderStatus,
+      shippingInfo,
+      billingInfo,
+      customerId,
+      customerEmail,
+      customerName,
+      customerPhone,
+      notes,
+      storeId,
+      createdBy,
+      orderReference
+    } = orderData;
 
-      // Validate required fields
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        throw new Error("Order must contain at least one item");
-      }
+    // Validate required fields
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      throw new Error("Order must contain at least one item");
+    }
 
-      if (!customerId && !customerEmail) {
-        throw new Error("Customer information is required");
-      }
+    if (!customerId && !customerEmail) {
+      throw new Error("Customer information is required");
+    }
 
-      // Generate order ID
-      const orderId = `ORD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate order ID (use orderReference if provided for payment orders)
+    const orderId = orderReference || `ORD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const orderDocData = {
+      id: orderId,
+      items: items.map(item => ({
+        itemId: item.docId || item.id || null,
+        name: item.name || '',
+        category: item.category || '',
+        subCategory: item.subCategory || '',
+        brand: item.brand || '',
+        price: parseFloat(item.price) || 0,
+        quantity: parseInt(item.quantity) || 1,
+        unit: item.unit || '',
+        discountPercentage: parseFloat(item.discountPercentage) || 0,
+        discountedPrice: parseFloat(item.discountedPrice) || parseFloat(item.price) || 0,
+        totalPrice: (parseFloat(item.discountedPrice) || parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1),
+        image: item.images?.[0] || item.image || '',
+        barcode: item.barcode || '',
+        appliedPromoCode: item.appliedPromoCode || null
+      })),
+      total: parseFloat(total) || 0,
+      subtotal: subtotal ? parseFloat(subtotal) : parseFloat(total) || 0,
+      tax: tax ? parseFloat(tax) : 0,
+      deliveryFee: deliveryFee ? parseFloat(deliveryFee) : 0,
+      promoCode: promoCode || null,
+      discountAmount: discountAmount ? parseFloat(discountAmount) : 0,
+      paidAmount: paidAmount ? parseFloat(paidAmount) : parseFloat(total) || 0,
+      paymentMethod: paymentMethod || "cash",
+      paymentStatus: paymentStatus || "pending",
+      orderStatus: orderStatus || "processing",
       
-      const orderDocData = {
-        id: orderId,
-        items: items.map(item => ({
-          itemId: item.docId || item.id,
-          name: item.name,
-          category: item.category,
-          subCategory: item.subCategory,
-          brand: item.brand,
-          price: parseFloat(item.price),
-          quantity: parseInt(item.quantity || 1),
-          unit: item.unit,
-          discountPercentage: item.discountPercentage || 0,
-          discountedPrice: item.discountedPrice || item.price,
-          totalPrice: (item.discountedPrice || item.price) * (item.quantity || 1),
-          image: item.images?.[0] || item.image,
-          barcode: item.barcode,
-          appliedPromoCode: item.appliedPromoCode
-        })),
-        total: parseFloat(total),
-        subtotal: subtotal ? parseFloat(subtotal) : parseFloat(total),
-        tax: tax ? parseFloat(tax) : 0,
-        deliveryFee: deliveryFee ? parseFloat(deliveryFee) : 0,
-        promoCode: promoCode || null,
-        discountAmount: discountAmount ? parseFloat(discountAmount) : 0,
-        paidAmount: paidAmount ? parseFloat(paidAmount) : parseFloat(total),
+      shippingInfo: {
+        address: shippingInfo?.address || "",
+        address2: shippingInfo?.address2 || "",
+        city: shippingInfo?.city || "",
+        state: shippingInfo?.state || "",
+        zipCode: shippingInfo?.zipCode || "",
+        country: shippingInfo?.country || "Sri Lanka",
+        phone: shippingInfo?.phone || customerPhone || "",
+        email: shippingInfo?.email || customerEmail || "",
+        instructions: shippingInfo?.instructions || ""
+      },
+      
+      billingInfo: billingInfo || shippingInfo || {},
+      
+      customer: {
+        id: customerId || null,
+        name: customerName || "",
+        email: customerEmail || "",
+        phone: customerPhone || ""
+      },
+      
+      notes: notes || "",
+      storeId: storeId || "",
+      createdBy: createdBy || "",
+      
+      // Payment tracking
+      paymentDetails: {
+        transactionId: null,
+        paidAt: null,
         paymentMethod: paymentMethod || "cash",
-        paymentStatus: paymentStatus || "pending", // 'paid', 'pending', 'failed', 'refunded'
-        orderStatus: orderStatus || "processing", // 'processing', 'confirmed', 'preparing', 'shipped', 'delivered', 'cancelled', 'refunded'
-        
-        shippingInfo: {
-          address: shippingInfo?.address || "",
-          city: shippingInfo?.city || "",
-          state: shippingInfo?.state || "",
-          zipCode: shippingInfo?.zipCode || "",
-          country: shippingInfo?.country || "Sri Lanka",
-          phone: shippingInfo?.phone || customerPhone,
-          email: shippingInfo?.email || customerEmail,
-          instructions: shippingInfo?.instructions || ""
-        },
-        
-        billingInfo: billingInfo || shippingInfo || {},
-        
-        customer: {
-          id: customerId || null,
-          name: customerName || "",
-          email: customerEmail || "",
-          phone: customerPhone || ""
-        },
-        
-        notes: notes || "",
-        storeId: storeId || "",
-        createdBy: createdBy || "",
-        
-        // Payment tracking
-        paymentDetails: {
-          transactionId: null,
-          paidAt: null,
-          paymentMethod: paymentMethod || "cash",
-          paymentReference: null
-        },
-        
-        // Delivery tracking
-        deliveryDetails: {
-          estimatedDelivery: null,
-          actualDelivery: null,
-          deliveredBy: null,
-          trackingNumber: null,
-          carrier: null
-        },
-        
-        // Status history
-        statusHistory: [
-          {
-            status: orderStatus || "processing",
-            timestamp: new Date().toISOString(),
-            note: "Order created"
-          }
-        ],
-        
-        // Flags
-        isActive: true,
-        isPaid: paymentStatus === "paid",
-        isDelivered: false,
-        isCancelled: false,
-        
-        // Timestamps
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-
-      // Create document in Firestore
-      await setDoc(doc(db, this.collectionName, orderId), orderDocData);
-
-      // Create order items in subcollection for detailed tracking
-      const batch = writeBatch(db);
+        paymentReference: orderReference || null,
+        gatewayResponse: null
+      },
       
-      items.forEach((item, index) => {
-        const itemId = item.docId || item.id || `item_${index}`;
-        const itemRef = doc(db, this.collectionName, orderId, this.orderItemsCollection, itemId);
-        
-        batch.set(itemRef, {
-          ...item,
-          orderId,
-          addedAt: serverTimestamp()
-        });
+      // Delivery tracking
+      deliveryDetails: {
+        estimatedDelivery: null,
+        actualDelivery: null,
+        deliveredBy: null,
+        trackingNumber: null,
+        carrier: null
+      },
+      
+      // Status history
+      statusHistory: [
+        {
+          status: orderStatus || "processing",
+          timestamp: new Date().toISOString(),
+          note: "Order created"
+        }
+      ],
+      
+      // Flags
+      isActive: true,
+      isPaid: paymentStatus === "paid",
+      isDelivered: false,
+      isCancelled: false,
+      
+      // Timestamps
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    // Create document in Firestore
+    await setDoc(doc(db, this.collectionName, orderId), orderDocData);
+
+    // Create order items in subcollection for detailed tracking
+    const batch = writeBatch(db);
+    
+    items.forEach((item, index) => {
+      const itemId = item.docId || item.id || `item_${index}`;
+      const itemRef = doc(db, this.collectionName, orderId, this.orderItemsCollection, itemId);
+      
+      // Clean the item data to remove any undefined values
+      const cleanItemData = {
+        itemId: item.docId || item.id || null,
+        name: item.name || '',
+        category: item.category || '',
+        subCategory: item.subCategory || '',
+        brand: item.brand || '',
+        price: parseFloat(item.price) || 0,
+        quantity: parseInt(item.quantity) || 1,
+        unit: item.unit || '',
+        discountPercentage: parseFloat(item.discountPercentage) || 0,
+        discountedPrice: parseFloat(item.discountedPrice) || parseFloat(item.price) || 0,
+        totalPrice: (parseFloat(item.discountedPrice) || parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1),
+        image: item.images?.[0] || item.image || '',
+        barcode: item.barcode || '',
+        appliedPromoCode: item.appliedPromoCode || null,
+        orderId: orderId,
+        addedAt: serverTimestamp()
+      };
+      
+      // Remove any fields that might still be undefined
+      Object.keys(cleanItemData).forEach(key => {
+        if (cleanItemData[key] === undefined) {
+          delete cleanItemData[key];
+        }
       });
       
-      await batch.commit();
+      batch.set(itemRef, cleanItemData);
+    });
+    
+    await batch.commit();
 
-      // Update inventory (reduce stock quantities)
-      await this.updateInventory(items, 'decrease');
+    // Update inventory (reduce stock quantities)
+    await this.updateInventory(items, 'decrease');
 
-      return {
-        success: true,
-        order: {
-          ...orderDocData,
-          docId: orderId
-        }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: this.getErrorMessage(error.code || error.message)
-      };
-    }
+    return {
+      success: true,
+      order: {
+        ...orderDocData,
+        docId: orderId,
+        id: orderId
+      }
+    };
+  } catch (error) {
+    console.error("Error creating order - full error:", error);
+    console.error("Error code:", error.code);
+    console.error("Error message:", error.message);
+    return {
+      success: false,
+      error: error.message || "An error occurred while creating the order"
+    };
   }
+}
 
   /**
    * Get single order by ID
@@ -223,22 +258,117 @@ class OrderService {
   }
 
   /**
-   * Get order items
-   * @param {string} orderId - Order ID
-   * @returns {Promise<Array>} - Array of order items
+   * Get order by reference (for payment verification)
+   * @param {string} reference - Payment reference
+   * @returns {Promise<Object|null>} - Order object or null
    */
-  async getOrderItems(orderId) {
+  async getOrderByReference(reference) {
     try {
-      const itemsRef = collection(db, this.collectionName, orderId, this.orderItemsCollection);
-      const snapshot = await getDocs(itemsRef);
+      const q = query(
+        collection(db, this.collectionName),
+        where("paymentDetails.paymentReference", "==", reference),
+        limit(1)
+      );
       
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        const data = doc.data();
+        return {
+          docId: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate(),
+          updatedAt: data.updatedAt?.toDate()
+        };
+      }
+      return null;
     } catch (error) {
-      console.error("Error getting order items:", error);
-      return [];
+      console.error("Error getting order by reference:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Update order payment status
+   * @param {string} orderId - Order ID
+   * @param {Object} paymentData - Payment data from gateway
+   * @returns {Promise<Object>} - Updated order or error
+   */
+  async updateOrderPayment(orderId, paymentData) {
+    try {
+      const orderDocRef = doc(db, this.collectionName, orderId);
+      
+      const updates = {
+        paymentStatus: "paid",
+        isPaid: true,
+        orderStatus: "processing", // Move from pending_payment to processing
+        "paymentDetails.transactionId": paymentData.transactionId,
+        "paymentDetails.paidAt": new Date().toISOString(),
+        "paymentDetails.gatewayResponse": paymentData,
+        statusHistory: arrayUnion({
+          status: "paid",
+          timestamp: new Date().toISOString(),
+          note: `Payment received via ${paymentData.method || 'PayHere'}`
+        }),
+        updatedAt: serverTimestamp()
+      };
+
+      await updateDoc(orderDocRef, updates);
+
+      return {
+        success: true,
+        order: await this.getOrder(orderId)
+      };
+    } catch (error) {
+      console.error("Error updating order payment:", error);
+      return {
+        success: false,
+        error: this.getErrorMessage(error.code)
+      };
+    }
+  }
+
+  /**
+   * Mark order payment as failed
+   * @param {string} orderId - Order ID
+   * @param {string} reason - Failure reason
+   * @returns {Promise<Object>} - Updated order or error
+   */
+  async markPaymentFailed(orderId, reason) {
+    try {
+      const orderDocRef = doc(db, this.collectionName, orderId);
+      
+      const updates = {
+        paymentStatus: "failed",
+        orderStatus: "payment_failed",
+        "paymentDetails.failureReason": reason,
+        statusHistory: arrayUnion({
+          status: "payment_failed",
+          timestamp: new Date().toISOString(),
+          note: `Payment failed: ${reason}`
+        }),
+        updatedAt: serverTimestamp()
+      };
+
+      await updateDoc(orderDocRef, updates);
+
+      // Restore inventory for failed payment
+      const order = await this.getOrder(orderId);
+      if (order) {
+        await this.updateInventory(order.items, 'increase');
+      }
+
+      return {
+        success: true,
+        order: await this.getOrder(orderId)
+      };
+    } catch (error) {
+      console.error("Error marking payment failed:", error);
+      return {
+        success: false,
+        error: this.getErrorMessage(error.code)
+      };
     }
   }
 
@@ -312,9 +442,9 @@ class OrderService {
         if (updates.paymentStatus === "paid") {
           cleanUpdates.paymentDetails = {
             ...currentOrder.paymentDetails,
-            transactionId: updates.transactionId,
+            transactionId: updates.transactionId || currentOrder.paymentDetails?.transactionId,
             paidAt: new Date().toISOString(),
-            paymentReference: updates.paymentReference
+            paymentReference: updates.paymentReference || currentOrder.paymentDetails?.paymentReference
           };
         }
       }
@@ -352,72 +482,10 @@ class OrderService {
         order: result
       };
     } catch (error) {
+      console.error("Error updating order:", error);
       return {
         success: false,
         error: this.getErrorMessage(error.code || error.message)
-      };
-    }
-  }
-
-  /**
-   * Delete order (soft delete)
-   * @param {string} orderId - Order ID
-   * @returns {Promise<Object>} - Success or error
-   */
-  async deleteOrder(orderId) {
-    try {
-      await updateDoc(doc(db, this.collectionName, orderId), {
-        isActive: false,
-        deletedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: this.getErrorMessage(error.code)
-      };
-    }
-  }
-
-  /**
-   * Permanently delete order
-   * @param {string} orderId - Order ID
-   * @returns {Promise<Object>} - Success or error
-   */
-  async permanentlyDeleteOrder(orderId) {
-    try {
-      await deleteDoc(doc(db, this.collectionName, orderId));
-      
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: this.getErrorMessage(error.code)
-      };
-    }
-  }
-
-  // ========== ORDER STATUS MANAGEMENT ==========
-
-  /**
-   * Update payment status
-   * @param {string} orderId - Order ID
-   * @param {string} status - Payment status
-   * @param {Object} paymentDetails - Payment details
-   * @returns {Promise<Object>} - Updated order or error
-   */
-  async updatePaymentStatus(orderId, status, paymentDetails = {}) {
-    try {
-      return await this.updateOrder(orderId, {
-        paymentStatus: status,
-        ...paymentDetails
-      });
-    } catch (error) {
-      return {
-        success: false,
-        error: this.getErrorMessage(error.code)
       };
     }
   }
@@ -436,6 +504,7 @@ class OrderService {
         statusNote: note
       });
     } catch (error) {
+      console.error("Error updating order status:", error);
       return {
         success: false,
         error: this.getErrorMessage(error.code)

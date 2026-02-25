@@ -92,6 +92,7 @@ function ItemsPage() {
   };
 
   const applySearchFilter = (items, term) => {
+    console.log(items)
     if (!term) return items;
     
     const lowerTerm = term.toLowerCase();
@@ -153,6 +154,7 @@ function ItemsPage() {
             filtered = filtered.filter(item => item.categoryId === categoryId);
           }
           
+          
           setFilteredItems(filtered);
         } else {
           setFilteredItems(transformedItems);
@@ -178,7 +180,9 @@ function ItemsPage() {
    const handleFilterChange = (filteredFromContainer) => {
     // Apply search filter on top of container filters
     const filteredWithSearch = applySearchFilter(filteredFromContainer, searchTerm);
-    setFilteredItems(filteredWithSearch);
+    console.log(filteredFromContainer)
+    // if(searchTerm&&searchTerm!='')
+      setFilteredItems(filteredWithSearch);
   }
 
   // Refresh items function
@@ -234,7 +238,7 @@ function ItemsPage() {
         <div className='flex-3 w-full'>
           <ItemsContainer 
             items={filteredItems}
-            emptyMessage={allItems.length === 0 ? "No items found" : "No items match your filters"}
+            emptyMessage={filteredItems.length === 0 ? "No items found" : "No items match your filters"}
           />
         </div>
       </div>
